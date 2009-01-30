@@ -17,6 +17,7 @@
 // EC codes.
 
 /*
+# The types of the values used on EC.
 typedef uint8_t ec_opcode_t;
 typedef uint16_t ec_tagname_t;
 typedef uint8_t ec_tagtype_t;
@@ -24,9 +25,11 @@ typedef uint32_t ec_taglen_t;
 */
 
 // ProtocolVersion
+# Current protocol version.
 define('EC_CURRENT_PROTOCOL_VERSION', 0x0200);
 
 // ECFlags
+# This flags are used on the transmission layer.
 define('EC_FLAG_ZLIB',         0x00000001);
 define('EC_FLAG_UTF8_NUMBERS', 0x00000002);
 define('EC_FLAG_HAS_ID',       0x00000004);
