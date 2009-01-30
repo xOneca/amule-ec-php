@@ -18,12 +18,12 @@
 
 // ECTagTypes
 define('EC_TAGTYPE_UNKNOWN', 0);
-define('EC_TAGTYPE_CUSTOM', 1);
-define('EC_TAGTYPE_UINT8', 2);
-define('EC_TAGTYPE_UINT16', 3);
-define('EC_TAGTYPE_UINT32', 4);
-define('EC_TAGTYPE_UINT64', 5);
-define('EC_TAGTYPE_STRING', 6);
-define('EC_TAGTYPE_DOUBLE', 7);
-define('EC_TAGTYPE_IPV4', 8);
-define('EC_TAGTYPE_HASH16', 9);
+define('EC_TAGTYPE_CUSTOM',  1);
+define('EC_TAGTYPE_UINT8',   2);
+define('EC_TAGTYPE_UINT16',  3);
+define('EC_TAGTYPE_UINT32',  4);
+define('EC_TAGTYPE_UINT64',  5);
+define('EC_TAGTYPE_STRING',  6);
+define('EC_TAGTYPE_DOUBLE',  7);
+define('EC_TAGTYPE_IPV4',    8);
+define('EC_TAGTYPE_HASH16',  9);
