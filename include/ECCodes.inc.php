@@ -17,11 +17,17 @@
 // EC codes.
 
 /*
-# The types of the values used on EC.
+// The types of the values used on EC.
 typedef uint8_t ec_opcode_t;
 typedef uint16_t ec_tagname_t;
 typedef uint8_t ec_tagtype_t;
 typedef uint32_t ec_taglen_t;
+*/
+/*
+function ec_opcode_t($in){return ($in & 0xff);}
+function ec_tagname_t($in){return ($in & 0xffff);}
+function ec_tagtype_t($in){return ($in & 0xff);}
+function ec_taglen_t($in){return ($in & 0xffffffff);}
 */
 
 // ProtocolVersion
@@ -29,11 +35,14 @@ typedef uint32_t ec_taglen_t;
 define('EC_CURRENT_PROTOCOL_VERSION', 0x0200);
 
 // ECFlags
-# This flags are used on the transmission layer.
-define('EC_FLAG_ZLIB',         0x00000001);
-define('EC_FLAG_UTF8_NUMBERS', 0x00000002);
-define('EC_FLAG_HAS_ID',       0x00000004);
-define('EC_FLAG_ACCEPTS',      0x00000010);
+// This flags are used on the transmission layer (LSB).
+define('EC_FLAG_ZLIB',         0x00000001); // BIT 0
+define('EC_FLAG_UTF8_NUMBERS', 0x00000002); // BIT 1
+define('EC_FLAG_HAS_ID',       0x00000004); // BIT 2
+                                            // BIT 3 (Reserved)
+define('EC_FLAG_ACCEPTS',      0x00000010); // BIT 4
+                                            // BIT 5 (Always 1)
+                                            // BIT 6 (Always 0)
 define('EC_FLAG_UNKNOWN_MASK', 0xff7f7f08);
 
 // ECOpCodes
