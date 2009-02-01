@@ -1,0 +1,14 @@
+#summary Description of ExternalConnection
+#labels Phase-Requirements
+
+= Introduction =
+
+*External Connections* (EC) is a bi-directional interface aMule uses to communicate with external utilities.
+
+= Details =
+
+When a user is using one of these programs, it is sending the commands via the External Connections port and aMule is reading them there.
+
+Although there are alternate ways of communicating with aMule, External Connections is the only _bi-directional_ way. Other ways of communication with aMule would be the On-line Signature (outgoing direction) and ED2KLinks file (ingoing direction). 
+
+_(From <a href="http://www.amule.org/wiki/index.php/External_Connections">aMule.org Wiki page</a>)_
