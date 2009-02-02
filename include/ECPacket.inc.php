@@ -20,16 +20,19 @@
 /// Purpose: Class implementing a packet
 
 require_once('ECCodes.inc.php');
+require_once('ECTag.inc.php');
+require_once('MD4Hash.inc.php');
 
 // Class for managing packets
-class ECPacket
+class CECPacket extends CECTag
 {
     var $flags = 0x20; // Bit 5 allways on (is the minimum)
     var $opcode = 0;
     var $datasize = 0;
     var $accepts = 0;
 
-    function __construct(){}
+    function __construct()
+    {}
 
     // Parse raw packet to get the information
     function parse_packet($str)
