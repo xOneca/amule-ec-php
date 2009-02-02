@@ -1,20 +1,23 @@
 <?php
-//  This program is free software; you can redistribute it and/or modify
-//  it under the terms of the GNU General Public License as published by
-//  the Free Software Foundation; either version 2 of the License, or
-//  (at your option) any later version.
-//
-//  This program is distributed in the hope that it will be useful,
-//  but WITHOUT ANY WARRANTY; without even the implied warranty of
-//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//  GNU General Public License for more details.
-//
-//  You should have received a copy of the GNU General Public License
-//  along with this program; if not, write to the Free Software
-//  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA
+/*
+ * Copyright (C) 2009 Xabier Oneca <xoneca+amule-ec-php@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
 
-// Purpose:
-// EC codes.
+/// Purpose: EC Codes
 
 /*
 // The types of the values used on EC.
@@ -23,12 +26,7 @@ typedef uint16_t ec_tagname_t;
 typedef uint8_t ec_tagtype_t;
 typedef uint32_t ec_taglen_t;
 */
-/*
-function ec_opcode_t($in){return ($in & 0xff);}
-function ec_tagname_t($in){return ($in & 0xffff);}
-function ec_tagtype_t($in){return ($in & 0xff);}
-function ec_taglen_t($in){return ($in & 0xffffffff);}
-*/
+
 
 // ProtocolVersion
 # Current protocol version.
