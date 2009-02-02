@@ -1,5 +1,5 @@
 <?php
-/**
+/*
  * Copyright (C) 2009 Xabier Oneca <xoneca+amule-ec-php@gmail.com>
  *
  * This program is free software; you can redistribute it and/or
@@ -29,7 +29,7 @@ define('MD4HASH_LENGTH', 16);
  *
  * Please remember that the hashes are strings with length 16 WITHOUT a zero-terminator!
  */
-class MD4Hash
+class CMD4Hash
 {
     /**
      * The raw MD4-hash.

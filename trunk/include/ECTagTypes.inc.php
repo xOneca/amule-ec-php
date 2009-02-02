@@ -1,5 +1,5 @@
 <?php
-/**
+/*
  * Copyright (C) 2009 Xabier Oneca <xoneca+amule-ec-php@gmail.com>
  *
  * This program is free software; you can redistribute it and/or

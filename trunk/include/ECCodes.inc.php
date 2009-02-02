@@ -26,6 +26,11 @@ typedef uint16_t ec_tagname_t;
 typedef uint8_t ec_tagtype_t;
 typedef uint32_t ec_taglen_t;
 */
+define('SIZEOF_EC_OPCODE_T', 1);
+define('SIZEOF_EC_TAGNAME_T', 2);
+define('SIZEOF_EC_TAGTYPE_T', 1);
+define('SIZEOF_EC_TAGLEN_T', 4);
+
 
 
 // ProtocolVersion
