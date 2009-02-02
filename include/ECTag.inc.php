@@ -61,10 +61,10 @@ class CECTag
     var $tagList = array();
     var $haschildren = false;
 
-    function __construct($name, $data=null)
+    function __construct($name, &$data=null)
     {
         $this->name = $name;
-        $this->data = $data;
+        $this->data =& $data; // Is reference needed?
 
         if($data === null){
             $this->dataType = EC_TAGTYPE_UNKNOWN;
@@ -73,9 +73,9 @@ class CECTag
             if(get_class($data) == 'EC_IPv4'){
                 $this->dataType = EC_TAGTYPE_IPV4;
                 $this->dataLen = 6; /// NOTE: I really don't know the length (probably don't needed)
-            }elseif(){
+            }elseif(get_class($data) == 'MD4Hash'){
                 $this->dataType = EC_TAGTYPE_HASH16
-                $this->dataLen = 16
+                $this->dataLen = 16;
             }
         }
         elseif(is_float($data)){
@@ -100,37 +100,5 @@ class CECTag
             $this->dataType = EC_TAGTYPE_CUSTOM;
             $this->dataLen = strlen($data);
         }
-    }
-}
-
-class CECTag_Custom extends CECTag
-{
-    /**
-     * Creates a new CECTag instance from custom data.
-     *
-     * @param name    TAG name
-     * @param length  length of data buffer
-     * @param data    TAG data
-     */
-    function __construct($name, $length, $data) // , copy=true)
-    {
-//         if($length > 0 && $data !== null){
-            $this->dataLen = $length;
-            $this->tagData = $data;
-            $this->dataType = EC_TAGTYPE_CUSTOM
-//         }
-    }
-}
-
-/** An empty TAG
- *
- * Note, that an "empty" tag is empty because it contains no data, but it still
- * may contain children.
- */
-class CECEmptyTag extends CECTag
-{
-    function __construct($name)
-    {
-        parent::__construct($name, 0, null);
     }
 }
