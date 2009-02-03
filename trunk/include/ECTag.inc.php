@@ -104,6 +104,8 @@ class CECTag
             }
         }
         elseif(is_float($data)){
+            // EC protocol transmits floats as strings.
+            $this->tagData = "$data";
             $this->dataType = EC_TAGTYPE_DOUBLE;
         }
         elseif(is_int($data)){
@@ -123,7 +125,8 @@ class CECTag
         }
         elseif(is_string($data)){
             $this->dataType = EC_TAGTYPE_STRING;
-            $this->dataLen = strlen($data);
+            // Strings are \0 terminated. Is \0 included into data? I don't think so...
+            $this->dataLen = strlen($data) + 1;
         }
         else{
             $this->dataType = EC_TAGTYPE_CUSTOM;
@@ -131,9 +134,9 @@ class CECTag
         }
     }
 
-    function GetTagByIndex($index)
+    function &GetTagByIndex($index)
     {
-        return (($index >= count($this->tagList)) ? null : $this->tagList[$index]);
+        return (($index >= count($this->tagList)) ? null : &$this->tagList[$index]);
     }
 
     /**
@@ -145,7 +148,7 @@ class CECTag
     function &GetTagByName($name)
     {
         foreach($this->tagList as &$child)
-            if($child->tagName == $name) return $child;
+            if($child->tagName == $name) return &$child;
 
         return null;
     }
@@ -177,7 +180,10 @@ class CECTag
         return $this->tagData;
     }
 
-    function GetTagDataLen(){ return $this->dataLen; }
+    function GetTagDataLen()
+    {
+        return $this->dataLen;
+    }
 
     function GetTagName()
     {
@@ -324,6 +330,7 @@ class CECTag
      */
     function AddTag($tag)
     {
+        // Cannot have more than 64k tags
         assert(count($this->tagList) < 0xffff);
 
         $this->tagList[] = $tag;
