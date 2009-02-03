@@ -24,31 +24,34 @@ require_once('ECTag.inc.php');
 require_once('MD4Hash.inc.php');
 
 // Class for managing packets
-class CECPacket extends CECTag
+class CECPacket extends CECEmptyTag
 {
-    var $flags = 0x20; // Bit 5 allways on (is the minimum)
-    var $opcode = 0;
-    var $datasize = 0;
-    var $accepts = 0;
+    var $opCode = 0;
 
-    function __construct()
-    {}
-
-    // Parse raw packet to get the information
-    function parse_packet($str)
+    function __construct($opCode, $detail_level=EC_DETAIL_FULL)
     {
-        list(,$this->flags) = unpack('N', $str); // Get first 4 bytes
-        $str = substr($str, 4); // Delete first 4 bytes
-        if(($this->flags & EC_FLAG_ACCEPTS) == EC_FLAG_ACCEPTS)
-        {
-            list(,$this->accepts) = unpack('N', $str);
-            $str = substr($str, 4);
+        parent::__construct(0);
+        $this->opCode = $opCode;
+
+        // EC_DETAIL_FULL is default. No point transmit ti
+        if($detail_level != EC_DETAIL_FULL){
+            $this->AddTag(new CECTag(EC_TAG_DETAIL_LEVEL, $detail_level));
         }
-        else
-        {
-            // Should we accept the same as we send?
-            $this->accepts = $this->flags;
-        }
-        list(,$this->datasize) = unpack('N', $str);
+    }
+
+    function GetOpCode()
+    {
+        return $this->opCode;
+    }
+
+    function GetPacketLength()
+    {
+        return $this->GetTagLen();
+    }
+
+    function GetDetailLevel()
+    {
+        $tag = $this->GetTagByName(EC_TAG_DETAIL_LEVEL);
+        return $tag ? $tag->GetInt() : EC_DETAIL_FULL;
     }
 }
