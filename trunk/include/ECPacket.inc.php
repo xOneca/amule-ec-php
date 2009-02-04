@@ -17,7 +17,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/// Purpose: Class implementing a packet
+/// Purpose: Class implementing a packet (protocol's main class)
 
 require_once('ECCodes.inc.php');
 require_once('ECTag.inc.php');
