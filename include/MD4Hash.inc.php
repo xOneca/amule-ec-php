@@ -38,7 +38,6 @@ class CMD4Hash
      * try to avoid direct access and instead use the member functions.
      */
     var $sHash;
-    var $rawhash;
 
     /**
      * Class constructor.
@@ -83,7 +82,7 @@ class CMD4Hash
     }
 
     /**
-     * Decodes a 32 char long hexadecimal representation of a MD4 hash.
+     * Decodes a 32-char-long hexadecimal representation of a MD4 hash.
      *
      * @param hash The hash representation to be converted. Length must be 32.
      * @return Return value specifies if the hash was succesfully decoded.
@@ -96,24 +95,27 @@ class CMD4Hash
         if(strlen($hash) != MD4HASH_LENGTH * 2)
             return false;
 
+        // Only these chars are allowed
+        $hex = '0123456789ABCDEF';
         for($i = 0; $i < MD4HASH_LENGTH * 2; $i++){
             $char = strtoupper($hash{$i});
-            $hex = '0123456789ABCDEF';
 
+            // Not found
             if(strpos($hex, $char) === false)
                 return false;
         }
 
+        // Store as binary data
         $this->sHash = pack('H*', $hash);
         return true;
     }
 
-    /** 
-     * Creates a 32 char long hexadecimal representation of a MD4 hash.
+    /**
+     * Creates a 32-char-long hexadecimal representation of a MD4 hash.
      *
      * @return Hexadecimal representation of sHash.
      *
-     * This function creates a hexadecimal representation of the MD4 
+     * This function creates a hexadecimal representation of the MD4
      * hash stored in sHash and returns it.
      */
     function EncodeSTL()
@@ -123,14 +125,20 @@ class CMD4Hash
     }
 
     /**
-     * Explicitly set the hash-array to the contents of a unsigned char array.
+     * Explicitly set the hash to the contents of a raw hash.
      *
-     * @param hash The array to be assigned.
+     * @param hash The raw hash to be assigned.
      *
+     * @return true on success, false otherwise.
      */
     function SetHash($hash)
     {
-        $this->sHash = $hash;
+        if(strlen($hash) == MD4HASH_LENGTH){
+            $this->sHash = $hash;
+            return true;
+        }
+        else
+            return false;
     }
 
     /**
