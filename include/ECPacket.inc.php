@@ -39,6 +39,19 @@ class CECPacket extends CECEmptyTag
         }
     }
 
+    function ReadFromSocket($socket)
+    {
+
+    }
+
+    function WritePacket($socket)
+    {
+        if(!$socket->WriteNumber($this->opCode, SIZEOF_EC_OPCODE_T))
+            return false;
+        if(!$this->WriteChildren($socket)
+            return false;
+    }
+
     function GetOpCode()
     {
         return $this->opCode;

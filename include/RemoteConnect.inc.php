@@ -47,7 +47,24 @@ class CRemoteConnect
     var $version;
 
 //     function __construct(){}
-    function ConnectToCore($host, $port, $login, $pass, $client, $version){}
+    function ConnectToCore($host, $port, $login, $pass, $client, $version)
+    {
+        $this->connectionPassword = $pass;
+        $this->client = $client;
+        $this->version = $version;
+
+        // Don't try to connect without a valid password
+        if($pass == '' || $pass == 'd41d8cd98f00b204e9800998ecf8427e') // md5sum('')
+            return false
+
+        $hash = new CMD4Hash();
+        if(!$hash->Decode($pass))
+            return false;
+        elseif($hash->IsEmpty())
+            return false;
+
+        if(fsockopen($host, $port)){}
+    }
 
     function GetServerReply()
     {

@@ -36,7 +36,13 @@ class CECSocket
     var $bytes_needed = 8; // Initial state: 4-bytes flags + 4-bytes length
     var $in_header = true;
 
-    function ConnectSocket($ip, $port){}
+    function ConnectSocket($ip, $port)
+    {
+        // Maybe it's better pfsockopen (persistent connection)
+        $this->socket = fsockopen($ip, $port, $errno);
+
+        return ($this->socket && !$errno);
+    }
 
     function WritePacket($packet)
     {
@@ -48,6 +54,7 @@ class CECSocket
             $flags |= EC_FLAG_UTF8_NUMBERS;
 
         $flags &= $this->my_flags;
+        $this->tx_flags = $flags;
 
         if($flags & EC_FLAG_ZLIB){
             // zlib? gzcompress() what?
@@ -55,6 +62,8 @@ class CECSocket
 
         $tmp_flags = pack('N', $flags); // unsigned 32-bit int MSB first
         socket_write($this->socket, $tmp_flags);
+
+        // ...
     }
 
     function ReadPacket()
