@@ -143,14 +143,14 @@ class CECTag
      * Finds the (first) child tag with given name.
      *
      * @param name TAG name to look for.
-     * @return the tag found, or NULL.
+     * @return the tag found, or \b false.
      */
     function &GetTagByName($name)
     {
         foreach($this->tagList as &$child)
             if($child->tagName == $name) return &$child;
 
-        return null;
+        return false;
     }
 
     /**
