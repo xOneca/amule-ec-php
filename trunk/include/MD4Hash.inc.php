@@ -51,7 +51,7 @@ class CMD4Hash
         if(strlen($string) == MD4HASH_LENGTH) // Treat as raw md4 hash
             $this->hash = $string;
         elseif(strlen($string) == MD4HASH_LENGTH * 2) // Treat as hex string
-            if($this->Decode($string) === false) return false;
+            if(!$this->Decode($string)) return false;
         else
             return false;
     }
