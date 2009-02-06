@@ -27,13 +27,33 @@ require_once('MD4Hash.inc.php');
 class CECPacket extends CECEmptyTag
 {
     var $opCode = 0;
+    var $state = bsName;
 
     function __construct($opCode, $detail_level=EC_DETAIL_FULL)
     {
         parent::__construct(0);
+
+        // Manage __construct($socket)
+        if(get_resource_type($opCode) == 'stream'){
+            $socket = $opCode; // For better understanding
+            if($this->state == bsName){
+                if(!$socket->ReadNumber($this->opCode, SIZEOF_EC_OPCODE_T))
+                    return false;
+                else
+                    $this->state = bsChildCnt;
+            }
+
+            if($this->state == bsChildCnt || $this->state == bsChildren){
+                if(!$this->ReadChildren($socket)) return false;
+            }
+
+            $this->state = bsFinished;
+            return true;
+        }
+
         $this->opCode = $opCode;
 
-        // EC_DETAIL_FULL is default. No point transmit ti
+        // EC_DETAIL_FULL is default. No point transmit it
         if($detail_level != EC_DETAIL_FULL){
             $this->AddTag(new CECTag(EC_TAG_DETAIL_LEVEL, $detail_level));
         }
@@ -41,7 +61,20 @@ class CECPacket extends CECEmptyTag
 
     function ReadFromSocket($socket)
     {
+        if($this->state == bsName){
+            if(!$socket->ReadNumber($this->opCode, SIZEOF_EC_OPCODE_T))
+                return false
+            else
+                $this->state = bsChildCnt;
+        }
 
+        if($this->state == bsChildCnt || $this->state == bsChildren){
+            if(!$this->ReadChildren($socket))
+                return false;
+        }
+
+        $this->state = bsFinished;
+        return true;
     }
 
     function WritePacket($socket)

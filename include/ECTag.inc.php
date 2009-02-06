@@ -21,6 +21,16 @@
 
 require_once('ECTagTypes.inc.php');
 
+define('bsName',        0);
+define('bsType',        1);
+define('bsLength',      2);
+define('bsLengthChild', 3);
+define('bsChildCnt',    4);
+define('bsChildren',    5);
+define('bsData1',       6);
+define('bsData2',       7);
+define('bsFinished',    8);
+
 /**
  * Class to hold IPv4 address.
  */
@@ -78,7 +88,7 @@ class EC_IPv4
  */
 class CECTag
 {
-    var $error = 0;
+    var $state = bsName;
     var $tagData = null;
     var $tagName = 0; // ec_tagname_t (uint16_t)
     var $dataLen = 0;
@@ -86,10 +96,10 @@ class CECTag
     var $tagList = array();
     var $haschildren = false;
 
-    function __construct($name, &$data=null)
+    function __construct($name, $data=null)
     {
         $this->name = $name;
-        $this->tagData =& $data; // Is reference needed?
+        $this->tagData = $data;
 
         if($data === null){
             $this->dataType = EC_TAGTYPE_UNKNOWN;
@@ -169,6 +179,11 @@ class CECTag
         return $length;
     }
 
+    /**
+     * Get number of children tags
+     *
+     * @return integer Children count
+     */
     function GetTagCount()
     {
         return count($this->tagList);
@@ -202,8 +217,9 @@ class CECTag
             case EC_TAGTYPE_UINT8:
             case EC_TAGTYPE_UINT16:
             case EC_TAGTYPE_UINT32:
+                return intval($this->tagData);
             case EC_TAGTYPE_UINT64:
-                return $this->tagData;
+                return $this->tagData; // PHP intval() has 32-bit limit
             case EC_TAGTYPE_UNKNOWN:
                 // Empty tag - This is NOT an error.
                 return 0;
@@ -246,12 +262,15 @@ class CECTag
         return strval($this->tagData);
     }
 
-    function GetStringData() { return $this->GetStringDataSTL(); }
+    function GetStringData()
+    {
+        return $this->GetStringDataSTL();
+    }
 
     /**
-     * Returns an EC_IPv4_t class.
+     * Returns an EC_IPv4_t object.
      *
-     * @return EC_IPv4_t class.
+     * @return EC_IPv4_t object.
      */
     function GetIPv4Data()
     {
@@ -262,10 +281,15 @@ class CECTag
             assert(0);
             return new EC_IPv4();
         else{
-            return $this->tagData; /// NOTE: Is tagData a EC_IPv4 object?
+            return $this->tagData;
         }
     }
 
+    /**
+     * Returns a MD4Hash object
+     *
+     * @return MD4Hash object
+     */
     function GetMD4Data()
     {
         if($this->dataType != EC_TAGTYPE_HASH16){
@@ -275,7 +299,7 @@ class CECTag
 
         assert($this->tagData !== null);
 
-        // Doesn't matter if m_tagData is NULL in CMD4Hash(),
+        // Doesn't matter if tagData is NULL in CMD4Hash(),
         // that'll just result in an empty hash.
         return new CMD4Hash($this->tagData);
     }
@@ -284,7 +308,6 @@ class CECTag
     {
         return $this->dataType;
     }
-
 
     /**
      * Add a child tag to this one.
@@ -335,6 +358,156 @@ class CECTag
 
         $this->tagList[] = $tag;
         return true;
+    }
+
+    function ReadFromSocket($socket)
+    {
+        if($this->state == bsName){
+            if(!$socket->ReadNumber($tmp_tagName, SIZEOF_EC_TAGNAME_T)){
+                $this->tagName = 0;
+                return false;
+            }
+            else{
+                $this->tagName = $tmp_tagName >> 1;
+                $this->haschildren = ($tmp_tagName & 0x01) ? true : false;
+                $this->state = bsType;
+            }
+        }
+
+        if($this->state == bsType){
+            if(!$socket->ReadNumber($type, SIZEOF_EC_TAGTYPE_T)){
+                $this->dataType = EC_TAGTYPE_UNKNOWN;
+                return false;
+            }
+            else{
+                $this->dataType = $type;
+                if($this->haschildren)
+                    $this->state = bsLengthChild;
+                else
+                    $this->state = bsLength;
+            }
+        }
+
+        if($this->state == bsLength || $this->state == bsLengthChild){
+            if(!$socket->ReadNumber($tagLen, SIZEOF_EC_TAGLEN_T)){
+                return false;
+            }
+            else{
+                $this->dataLen = $tagLen;
+                if($this->state == bsLength)
+                    $this->state = bsData1;
+                else
+                    $this->state = bsChildCnt;
+            }
+        }
+
+        if($this->state == bsChildCnt || $this->state == bsChildren){
+            if(!$this->ReadChildren($socket))
+                return false;
+        }
+
+        if($this->state == bsData1){
+            $tmp_len = $this->dataLen;
+            $this->dataLen = $tmp_len - $this->GetTagLen();
+            if($this->dataLen > 0){
+                $this->tagData = '';
+                $this->state = bsData2;
+            }
+            else{
+                $this->tagData = null;
+                $this->state = bsFinished;
+            }
+        }
+
+        if($this->state == bsData2){
+            if($this->tagData !== null){
+                if(!$socket->ReadBuffer($tagData, $this->dataLen)){
+                    return false;
+                }
+                else{
+                    $this->tagData = $tagData;
+                    $this->state = bsFinished;
+                }
+            }
+            else{
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function WriteTag($socket)
+    {
+        $tmp_tagName = ($this->tagName << 1) | (count($this->tagList) ? 1 : 0);
+        $type = $this->dataType;
+        $tagLen = $this->GetTagLen();
+        assert($type != EC_TAGTYPE_UNKNOWN);
+
+        if(!$socket->WriteNumber($tmp_tagName, SIZEOF_EC_TAGNAME_T)) return false;
+        if(!$socket->WriteNumber($type, SIZEOF_EC_TAGTYPE_T)) return false;
+        if(!$socket->WriteNumber($tagLen, SIZEOF_EC_TAGLEN_T)) return false;
+
+        if(count($this->tagList)){
+            if(!$this->WriteChildren($socket)) return false;
+        }
+
+        if($this->dataLen > 0){
+            if($this->tagData !== null)
+                if(!$socket->WriteBuffer($this->tagData, $this->dataLen)) return false;
+        }
+
+        return true;
+    }
+
+    function ReadChildren($socket)
+    {
+        if($this->state == bsChildCnt){
+            if(!$socket->ReadNumber($tmp_tagCount, 2)){ // SIZEOF_UINT16 (not defined)
+                return false;
+            }
+            else{
+                $this->tagList = array();
+                if($tmp_tagCount > 0){
+                    for($i=0; $i < $tmp_tagCount; $i++)
+                        $this->tagList[] = new CECTag(0);
+                    $this->haschildren = true;
+                    $this->state = bsChildren;
+                }
+            }
+        }
+
+        if($this->state == bsChildren){
+            for($i=0; $i < count($this->tagList); $i++){
+                $tag = &$this->tagList[$i];
+                if(!$tag->IsOk()){
+                    if(!$tag->ReadFromSocket($socket)){
+                        return false;
+                    }
+                }
+            }
+            $this->state = bsData1;
+        }
+
+        return true;
+    }
+
+    function WriteChildren($socket)
+    {
+        assert(count($this->tagList) < 0xffff);
+        $count = count($this->tagList);
+        if(!$socket->WriteNumber($count, 2)) // SIZEOF_UINT16 (not defined)
+            return false;
+        if($count){
+            for($i=0; $i < $count; $i++)
+                if(!$this->tagList[$i]->WriteTag($socket)) return false;
+        }
+        return true;
+    }
+
+    function IsOk()
+    {
+        return ($this->state == bsFinished);
     }
 }
 
