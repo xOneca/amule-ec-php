@@ -21,12 +21,13 @@
 
 require_once('ECPacket.inc.php');
 
-// utf8_mbtowc() = utf8_decode()
-// utf8_wctomb() = utf8_encode()
+// utf8_mbtowc() = utf8_decode() (?)
+// utf8_wctomb() = utf8_encode() (?)
 
 define('EC_COMPRESSION_LEVEL', 9);
 define('EC_MAX_UNCOMPRESSED', 1024);
 
+/*
 class CQueuedData
 {
     var $data = '';
@@ -92,6 +93,7 @@ class CQueuedData
     function GetRemLength(){}
     function GetUnreadDataLength(){}
 }
+*/
 
 /**
  * \class CECSocket
@@ -107,9 +109,14 @@ class CECSocket
     var $curr_tx_data = '';
     var $rx_flags = 0;
     var $tx_flags = 0;
-    var $my_flags = 0x20 | EC_FLAG_ZLIB | EC_FLAG_UTF8_NUMBERS | EC_FLAG_ACCEPTS;
+    var $my_flags = 0;
     var $bytes_needed = 8; // Initial state: 4-bytes flags + 4-bytes length
     var $in_header = true;
+
+    function __construct()
+    {
+        $this->my_flags = 0x20 | EC_FLAG_ZLIB | EC_FLAG_UTF8_NUMBERS | EC_FLAG_ACCEPTS;
+    }
 
     function __destruct()
     {
@@ -193,7 +200,7 @@ class utf8_table
 
 function utf8_mb_remain($c)
 {
-    static $utf8_table = array(
+    $utf8_table = array(
         new utf8_table(0x80,  0x00,   0*6,    0x7F,           0),        // 1 byte sequence
         new utf8_table(0xE0,  0xC0,   1*6,    0x7FF,          0x80),     // 2 byte sequence
         new utf8_table(0xF0,  0xE0,   2*6,    0xFFFF,         0x800),    // 3 byte sequence
@@ -207,4 +214,36 @@ function utf8_mb_remain($c)
             break;
 
     return $i;
+}
+
+
+class CSocket
+{
+    var $pointer;
+
+    function __construct($host, $port)
+    {
+        $this->pointer = fsockopen($host, $port);
+        stream_set_blocking($this->pointer, 0);
+    }
+
+    function Read($length)
+    {
+        $read = fread($this->pointer, $length);
+        while(strlen($read) < $length){
+            $length -= strlen($read);
+            $read .= fread($this->pointer, $length);
+        }
+        return $read;
+    }
+
+    function Write($data) // , $format) (?)
+    {
+//         $data = pack($format, $data); (?)
+        $wrote = fwrite($this->pointer, $data, strlen($data));
+        while($wrote < strlen($data)){
+            $length = strlen($data) - $wrote;
+            $wrote = fwrite($this->pointer, substr($data, $wrote), $length);
+        }
+    }
 }

@@ -63,7 +63,7 @@ class CECPacket extends CECEmptyTag
     {
         if($this->state == bsName){
             if(!$socket->ReadNumber($this->opCode, SIZEOF_EC_OPCODE_T))
-                return false
+                return false;
             else
                 $this->state = bsChildCnt;
         }
@@ -81,7 +81,7 @@ class CECPacket extends CECEmptyTag
     {
         if(!$socket->WriteNumber($this->opCode, SIZEOF_EC_OPCODE_T))
             return false;
-        if(!$this->WriteChildren($socket)
+        if(!$this->WriteChildren($socket))
             return false;
     }
 

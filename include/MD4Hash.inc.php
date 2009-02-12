@@ -49,11 +49,9 @@ class CMD4Hash
     function __construct($string='')
     {
         if(strlen($string) == MD4HASH_LENGTH) // Treat as raw md4 hash
-            $this->hash = $string;
+            $this->sHash = $string;
         elseif(strlen($string) == MD4HASH_LENGTH * 2) // Treat as hex string
             if(!$this->Decode($string)) return false;
-        else
-            return false;
     }
 
     /**
@@ -67,7 +65,7 @@ class CMD4Hash
      */
     function IsEmpty()
     {
-        return (this->sHash === '');
+        return ($this->sHash === '');
     }
 
     /**
