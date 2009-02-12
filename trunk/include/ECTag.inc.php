@@ -109,7 +109,7 @@ class CECTag
                 $this->dataType = EC_TAGTYPE_IPV4;
                 $this->dataLen = 6; /// NOTE: I don't know the real length
             }elseif(get_class($data) == 'MD4Hash'){
-                $this->dataType = EC_TAGTYPE_HASH16
+                $this->dataType = EC_TAGTYPE_HASH16;
                 $this->dataLen = 16;
             }
         }
@@ -146,7 +146,7 @@ class CECTag
 
     function &GetTagByIndex($index)
     {
-        return (($index >= count($this->tagList)) ? null : &$this->tagList[$index]);
+        return (($index >= count($this->tagList)) ? null : $this->tagList[$index]);
     }
 
     /**
@@ -158,7 +158,7 @@ class CECTag
     function &GetTagByName($name)
     {
         foreach($this->tagList as &$child)
-            if($child->tagName == $name) return &$child;
+            if($child->tagName == $name) return $child;
 
         return false;
     }
@@ -174,7 +174,7 @@ class CECTag
         $length = $this->dataLen;
         foreach($this->tagList as $child){
             $length += $child->GetTagLen();
-            $length += SIZEOF_EC_TAGNAME_T + SIZEOF_EC_TAGTYPE_T + SIZEOF_EC_TAGLEN_T + (($child->GetTagCount() > 0) ? 2 : 0)
+            $length += SIZEOF_EC_TAGNAME_T + SIZEOF_EC_TAGTYPE_T + SIZEOF_EC_TAGLEN_T + (($child->GetTagCount() > 0) ? 2 : 0);
         }
         return $length;
     }
@@ -254,6 +254,7 @@ class CECTag
         if($this->dataType != EC_TAGTYPE_STRING){
             assert($this->dataType == EC_TAGTYPE_UNKNOWN);
             return '';
+        }
         elseif($this->tagData === null){
             assert(0);
             return '';
@@ -274,12 +275,14 @@ class CECTag
      */
     function GetIPv4Data()
     {
-        if($this->tagData === null)
+        if($this->tagData === null){
             assert(0);
             return new EC_IPv4();
-        elseif($this->dataType != EC_TAGTYPE_IPV4)
+        }
+        elseif($this->dataType != EC_TAGTYPE_IPV4){
             assert(0);
             return new EC_IPv4();
+        }
         else{
             return $this->tagData;
         }
