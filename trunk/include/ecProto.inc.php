@@ -19,10 +19,35 @@
 
 /// Purpose: Class implementing EC protocol
 
+require_once('ECCodes.inc.php');
+require_once('ECTagTypes.inc.php');
+
 define('SIZEOF_SUBTAG_COUNT', 2);
 define('SIZEOF_TAGNAME', 2);
 define('SIZEOF_TAGSIZE', 4);
 define('SIZEOF_TAGTYPE', 1);
+
+function utf8_chars_left($first_char)
+{
+    if($first_char & 0x80 == 0x00){ // only one byte (ASCII char)
+        return 0;
+    }if($first_char & 0xe0 == 0xc0){ // three first bits 110
+        return 1;
+    }elseif($first_char & 0xf0 == 0xe0){ // four first bits 1110
+        return 2;
+    }elseif($first_char & 0xf8 == 0xf0){ // five first bits 11110
+        return 3;
+    }
+    return false; // I don't know...
+}
+
+function read_utf8($socket)
+{
+    // Take first char and guess remaining bytes
+    // If there are remaining bytes, read them too
+    // Discard utf8 information from characters and
+    // join them into one integer
+}
 
 class ecTag
 {
@@ -400,5 +425,77 @@ class ecPacket extends ecTag
             $this->WriteSubtags($socket);
         else
             $socket->Write(pack('n', 0)); // Int16
+    }
+}
+
+// Specific-purpose tags
+class ecLoginPacket extends ecPacket
+{
+    function __construct($client_name, $version, $pass)
+    {
+        parent::__construct(EC_OP_AUTH_REQ);
+        $this->flags |= 0x20 | EC_FLAG_ACCEPTS;
+
+        $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_NAME, $client_name));
+        $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_VERSION, $version));
+        $this->AddSubtag(new ecTagInt(EC_TAG_PROTOCOL_VERSION, EC_CURRENT_PROTOCOL_VERSION));
+        $this->AddSubtag(new ecTagMD4(EC_TAG_PASSWD_HASH, $pass, false));
+    }
+}
+
+class ecDownloadsInfoReq extends ecPacket
+{
+    function __construct()
+    {
+        parent::__construct(EC_OP_GET_DLOAD_QUEUE);
+    }
+}
+
+// Only for parsing purpose
+class ecConnStateTag
+{
+    var $tag;
+    var $tag_val;
+
+    function __construct($tag)
+    {
+        $this->tag = $tag;
+        $this->tag_val = $tag->ValueInt();
+        // $this->tag_val = 0xfff;
+    }
+
+    function IsConnected()
+    {
+        return IsConnectedED2K() || IsConnectedKademlia();
+    }
+
+    function IsConnectedED2K()
+    {
+        return ($this->tag_val & 0x01) != 0;
+    }
+
+    function IsConnectingED2K()
+    {
+        return ($this->tag_val & 0x02) != 0;
+    }
+
+    function IsConnectedKademlia()
+    {
+        return ($this->tag_val & 0x04) != 0;
+    }
+
+    function IsKadFirewalled()
+    {
+        return ($this->tag_val & 0x08) != 0;
+    }
+
+    function IsKadRunning()
+    {
+        return ($this->tag_val & 0x10) != 0;
+    }
+
+    function Server()
+    {
+        return $this->tag->SubTag(EC_TAG_SERVER);
     }
 }
