@@ -22,10 +22,11 @@
 require_once('ECCodes.inc.php');
 require_once('ECTagTypes.inc.php');
 
-define('SIZEOF_SUBTAG_COUNT', 2);
-define('SIZEOF_TAGNAME', 2);
-define('SIZEOF_TAGSIZE', 4);
-define('SIZEOF_TAGTYPE', 1);
+// int lengths in pack() format
+define('SIZEOF_SUBTAG_COUNT', 'v'); // 2
+define('SIZEOF_TAGNAME', 'v'); // 2
+define('SIZEOF_TAGSIZE', 'V'); // 4
+define('SIZEOF_TAGTYPE', 'C'); // 1
 
 function utf8_chars_left($first_char)
 {
@@ -47,6 +48,51 @@ function read_utf8($socket)
     // If there are remaining bytes, read them too
     // Discard utf8 information from characters and
     // join them into one integer
+}
+
+class ecSocket
+{
+//     var $host = null;
+//     var $port = null;
+    var $fsp = false;
+
+    function __construct($host, $port)
+    {
+//         $this->host = $host;
+//         $this->port = $port;
+
+        $this->fsp = fsockopen($host, $port);
+
+        if($this->fsp === false) return false;
+    }
+
+    function __destruct()
+    {
+        if($this->fsp !== false)
+            fclose($this->fsp);
+    }
+
+    function Read($length)
+    {
+        if($this->fsp === false) return false;
+
+        $ret = '';
+        while(strlen($ret) < $length)
+            $ret .= fread($this->fsp, $length - strlen($ret));
+
+        return $ret;
+    }
+
+    function Write($data)
+    {
+        if($this->fsp === false) return false;
+
+        $len = 0;
+        do{
+            $len += fwrite($this->fsp, substr($data, $len));
+        }
+        while($len < strlen($data));
+    }
 }
 
 class ecTag
@@ -73,7 +119,7 @@ class ecTag
         $count = count($this->subtags);
         if($count)
         {
-            $socket->Write($count, SIZEOF_SUBTAG_COUNT);
+            $socket->Write(pack(SIZEOF_SUBTAG_COUNT, $count));
             foreach($this->subtags as $tag)
                 $tag->Write($socket);
         }
@@ -90,9 +136,9 @@ class ecTag
         if(count($this->subtags))
             $name |= 1;
 
-        $socket->Write($name, SIZEOF_TAGNAME);
-        $socket->Write($this->type, SIZEOF_TAGTYPE);
-        $socket->Write($this->Size(), SIZEOF_TAGSIZE);
+        $socket->Write(pack(SIZEOF_TAGNAME, $name));
+        $socket->Write(pack(SIZEOF_TAGTYPE, $this->type));
+        $socket->Write(pack(SIZEOF_TAGSIZE, $this->Size()));
 
         $this->WriteSubtags($socket);
 
@@ -147,6 +193,7 @@ class ecTagInt extends ecTag
             $value = $value_or_size;
             $size = $size_or_socket;
             $subtags = array();
+            $socket = false;
         }
 
         switch($size)
@@ -218,26 +265,35 @@ class ecTagMD4 extends ecTag
 {
     var $val;
 
-    function __construct($name, $socket, $subtags=array())
+    function __construct($name, $data_or_socket, $subtags=null)
     {
         parent::__construct($name, EC_TAGTYPE_HASH16, $subtags);
-        $md4 = unpack('N4', $socket->Read(16)); // Read entire md4 in 4 chunks
-        $this->val = $md4[1] << 96 | $md4[2] << 64 | $md4[3] << 32 | $md4[4];
+
+        if($subtags !== null){
+            $data = $data_or_socket;
+            // Hash is a string of hexadecimal chars (?)
+            $data = unpack('N4', pack('H*', $data)); // Read entire hash in 4 chunks
+        }
+        else{
+            $socket = $data_or_socket;
+            $data = unpack('N4', $socket->Read(16)); // Read entire hash in 4 chunks
+        }
+        $this->val = $data; // Save it in 4 chunks (too big int)
         $this->size = 16;
     }
 
     function Write($socket)
     {
-        assert(strlen($this->val) == 16);
+        assert(count($this->val) == 4);
 
         parent::Write($socket);
-        $socket->Write($this->val);
+        $socket->Write(pack('N*', $this->val[1], $this->val[2], $this->val[3], $this->val[4]));
     }
 
-    function ecMD4Hash()
-    {
-        return new CMD4Hash($this->val);
-    }
+//     function ecMD4Hash()
+//     {
+//         return new CMD4Hash($this->val);
+//     }
 }
 
 class ecTagIPv4 extends ecTag
@@ -250,8 +306,8 @@ class ecTagIPv4 extends ecTag
         parent::__construct($name, EC_TAGTYPE_IPV4, $subtags);
 
         $this->size = 4 + 2;
-        list(, $this->address) = unpack('N', $socket->Read(4)); // Read 4 bytes (Int32)
-        list(, $this->port) = unpack('n', $socket->Read(2)); // Read 2 bytes (Int16)
+        list(, $this->address) = unpack('V', $socket->Read(4)); // Read 4 bytes (Int32)
+        list(, $this->port) = unpack('v', $socket->Read(2)); // Read 2 bytes (Int16)
     }
 }
 
@@ -284,8 +340,8 @@ class ecTagString extends ecTag
             $string = $string_or_size;
         }
 
-        $this->val = rtrim($string); // discard \0
-        $this->size = strlen($this->val);
+        $this->val = rtrim($string); // Discard \0 at the end of the string
+        $this->size = strlen($string); // Size with \0 too
     }
 
     function Write($socket)
@@ -438,8 +494,8 @@ class ecLoginPacket extends ecPacket
 
         $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_NAME, $client_name));
         $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_VERSION, $version));
-        $this->AddSubtag(new ecTagInt(EC_TAG_PROTOCOL_VERSION, EC_CURRENT_PROTOCOL_VERSION));
-        $this->AddSubtag(new ecTagMD4(EC_TAG_PASSWD_HASH, $pass, false));
+        $this->AddSubtag(new ecTagInt(EC_TAG_PROTOCOL_VERSION, EC_CURRENT_PROTOCOL_VERSION, 2)); // I think size is 2 bytes
+        $this->AddSubtag(new ecTagMD4(EC_TAG_PASSWD_HASH, $pass, array()));
     }
 }
 
