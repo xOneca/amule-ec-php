@@ -17,28 +17,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/// Purpose: EC Codes
-
-/*
-// The types of the values used on EC.
-typedef uint8_t ec_opcode_t;
-typedef uint16_t ec_tagname_t;
-typedef uint8_t ec_tagtype_t;
-typedef uint32_t ec_taglen_t;
-*/
-define('SIZEOF_EC_OPCODE_T', 1);
-define('SIZEOF_EC_TAGNAME_T', 2);
-define('SIZEOF_EC_TAGTYPE_T', 1);
-define('SIZEOF_EC_TAGLEN_T', 4);
-
-
+// Purpose: Define constants for EC
 
 // ProtocolVersion
 # Current protocol version.
 define('EC_CURRENT_PROTOCOL_VERSION', 0x0200);
 
 // ECFlags
-// This flags are used on the transmission layer (LSB).
+# This flags are used on the transmission layer (LSB).
 define('EC_FLAG_ZLIB',         0x00000001); // BIT 0
 define('EC_FLAG_UTF8_NUMBERS', 0x00000002); // BIT 1
 define('EC_FLAG_HAS_ID',       0x00000004); // BIT 2
@@ -47,6 +33,18 @@ define('EC_FLAG_ACCEPTS',      0x00000010); // BIT 4
                                             // BIT 5 (Always 1)
                                             // BIT 6 (Always 0)
 define('EC_FLAG_UNKNOWN_MASK', 0xff7f7f08);
+
+// ECTagTypes
+define('EC_TAGTYPE_UNKNOWN', 0);
+define('EC_TAGTYPE_CUSTOM',  1);
+define('EC_TAGTYPE_UINT8',   2);
+define('EC_TAGTYPE_UINT16',  3);
+define('EC_TAGTYPE_UINT32',  4);
+define('EC_TAGTYPE_UINT64',  5);
+define('EC_TAGTYPE_STRING',  6);
+define('EC_TAGTYPE_DOUBLE',  7);
+define('EC_TAGTYPE_IPV4',    8);
+define('EC_TAGTYPE_HASH16',  9);
 
 // ECOpCodes
 define('EC_OP_NOOP',                          0x01);

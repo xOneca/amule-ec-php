@@ -1,0 +1,9 @@
+To do list:
+
+HIGH PRIORITY:
+- UTF-8 numbers
+- Zlib compression
+- Documentation
+
+LOW PRIORITY:
+- Make connection persistent between script calls
