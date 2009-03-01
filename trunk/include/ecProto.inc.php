@@ -23,9 +23,9 @@ require_once('ECCodes.inc.php');
 require_once('ECTagTypes.inc.php');
 
 // int lengths in pack() format
-define('SIZEOF_SUBTAG_COUNT', 'v'); // 2
-define('SIZEOF_TAGNAME', 'v'); // 2
-define('SIZEOF_TAGSIZE', 'V'); // 4
+define('SIZEOF_SUBTAG_COUNT', 'n'); // 2
+define('SIZEOF_TAGNAME', 'n'); // 2
+define('SIZEOF_TAGSIZE', 'N'); // 4
 define('SIZEOF_TAGTYPE', 'C'); // 1
 
 function utf8_chars_left($first_char)
@@ -55,6 +55,7 @@ class ecSocket
 //     var $host = null;
 //     var $port = null;
     var $fsp = false;
+    var $buffer = '';
 
     function __construct($host, $port)
     {
@@ -87,12 +88,34 @@ class ecSocket
     {
         if($this->fsp === false) return false;
 
+        $this->buffer .= $data;
+    }
+
+    function SendPacket()
+    {
+        if($this->fsp === false) return false;
+
+        $len = 0;
+        do{
+            $len += fwrite($this->fsp, substr($this->buffer, $len));
+        }
+        while($len < strlen($this->buffer));
+
+        $this->buffer = '';
+    }
+
+/*
+    function Write($data)
+    {
+        if($this->fsp === false) return false;
+
         $len = 0;
         do{
             $len += fwrite($this->fsp, substr($data, $len));
         }
         while($len < strlen($data));
     }
+*/
 }
 
 class ecTag
@@ -335,13 +358,14 @@ class ecTagString extends ecTag
         if($socket !== null){
             $size = $string_or_size;
             $string = $socket->Read($size);
+            $this->val = rtrim($string); // Discard \0 at the end of the string
+            $this->size = strlen($string); // Size with \0 too
         }
         else{
             $string = $string_or_size;
+            $this->val = $string; // String supplyed by the user/developer (without \0 ending)
+            $this->size = strlen($string) + 1; // Size with \0 too
         }
-
-        $this->val = rtrim($string); // Discard \0 at the end of the string
-        $this->size = strlen($string); // Size with \0 too
     }
 
     function Write($socket)
@@ -367,6 +391,7 @@ class ecPacket extends ecTag
     function Read($socket)
     {
         list(, $this->flags) = unpack('N', $socket->Read(4)); // Int32
+        // Shouldn't we read here accepts?
         list(, $this->size) = unpack('N', $socket->Read(4)); // Int32
         list(, $this->opcode) = unpack('C', $socket->Read(1)); // Char
 
@@ -473,7 +498,7 @@ class ecPacket extends ecTag
 
         $socket->Write(pack('N', $this->flags)); // Int32
         if(($this->flags & EC_FLAG_ACCEPTS) != 0)
-            $socket->Write(pack('N', $this->flags)); // Int32
+            $socket->Write(pack('N', $this->flags & ~EC_FLAG_ACCEPTS)); // Int32
 
         $socket->Write(pack('N', $packet_size)); // Int32
         $socket->Write(pack('C', $this->opcode));
