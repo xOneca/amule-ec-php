@@ -7,7 +7,7 @@ require_once('include/ecProto.inc.php');
 $socket = new ecSocket('127.0.0.1', 4661);
 
 print "Preparing login packet...\n";
-$packet = new ecLoginPacket('amule-remote', '2.2.3', '3CA7FA9B6781D94D763D07EBFAA5C515');
+$packet = new ecLoginPacket('amule-php-remote', '2.2.3', '3CA7FA9B6781D94D763D07EBFAA5C515');
 print "Writting packet...\n";
 $packet->Write($socket);
 print "Going to send:\n";

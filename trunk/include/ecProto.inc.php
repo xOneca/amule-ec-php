@@ -19,14 +19,14 @@
 
 /// Purpose: Class implementing EC protocol
 
-require_once('ECCodes.inc.php');
-require_once('ECTagTypes.inc.php');
+require_once('ecConstants.inc.php');
+require_once('ecTagTypes.inc.php');
 
 // int lengths in pack() format
-define('SIZEOF_SUBTAG_COUNT', 'n'); // 2
-define('SIZEOF_TAGNAME', 'n'); // 2
-define('SIZEOF_TAGSIZE', 'N'); // 4
-define('SIZEOF_TAGTYPE', 'C'); // 1
+define('TYPEOF_SUBTAG_COUNT', 'n'); // 2
+define('TYPEOF_TAGNAME', 'n'); // 2
+define('TYPEOF_TAGSIZE', 'N'); // 4
+define('TYPEOF_TAGTYPE', 'C'); // 1
 
 function utf8_chars_left($first_char)
 {
@@ -142,7 +142,7 @@ class ecTag
         $count = count($this->subtags);
         if($count)
         {
-            $socket->Write(pack(SIZEOF_SUBTAG_COUNT, $count));
+            $socket->Write(pack(TYPEOF_SUBTAG_COUNT, $count));
             foreach($this->subtags as $tag)
                 $tag->Write($socket);
         }
@@ -159,9 +159,9 @@ class ecTag
         if(count($this->subtags))
             $name |= 1;
 
-        $socket->Write(pack(SIZEOF_TAGNAME, $name));
-        $socket->Write(pack(SIZEOF_TAGTYPE, $this->type));
-        $socket->Write(pack(SIZEOF_TAGSIZE, $this->Size()));
+        $socket->Write(pack(TYPEOF_TAGNAME, $name));
+        $socket->Write(pack(TYPEOF_TAGTYPE, $this->type));
+        $socket->Write(pack(TYPEOF_TAGSIZE, $this->Size()));
 
         $this->WriteSubtags($socket);
 
@@ -391,7 +391,8 @@ class ecPacket extends ecTag
     function Read($socket)
     {
         list(, $this->flags) = unpack('N', $socket->Read(4)); // Int32
-        // Shouldn't we read here accepts?
+        if($this->flags & EC_FLAG_ACCEPTS != 0)
+            list(, $this->accepts) = unpack('N', $socket->Read(4)); // Int32
         list(, $this->size) = unpack('N', $socket->Read(4)); // Int32
         list(, $this->opcode) = unpack('C', $socket->Read(1)); // Char
 
