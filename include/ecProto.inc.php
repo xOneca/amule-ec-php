@@ -17,17 +17,20 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/// Purpose: Class implementing EC protocol
+/// Purpose: Classes for implementing aMule EC protocol
 
 require_once('ecConstants.inc.php');
-require_once('ecTagTypes.inc.php');
 
 // int lengths in pack() format
+// maybe can be hardcoded
 define('TYPEOF_SUBTAG_COUNT', 'n'); // 2
 define('TYPEOF_TAGNAME', 'n'); // 2
 define('TYPEOF_TAGSIZE', 'N'); // 4
 define('TYPEOF_TAGTYPE', 'C'); // 1
 
+/**
+ * How many 8-bit chars are left to complete the UTF-8 code
+ */
 function utf8_chars_left($first_char)
 {
     if($first_char & 0x80 == 0x00){ // only one byte (ASCII char)
@@ -42,6 +45,9 @@ function utf8_chars_left($first_char)
     return false; // I don't know...
 }
 
+/**
+ * Read UTF-8 number from socket
+ */
 function read_utf8($socket)
 {
     // Take first char and guess remaining bytes
@@ -50,6 +56,11 @@ function read_utf8($socket)
     // join them into one integer
 }
 
+/**
+ * Socket management class
+ *
+ * Sending a packet in a whole write is neccessary to work
+ */
 class ecSocket
 {
 //     var $host = null;
@@ -103,21 +114,11 @@ class ecSocket
 
         $this->buffer = '';
     }
-
-/*
-    function Write($data)
-    {
-        if($this->fsp === false) return false;
-
-        $len = 0;
-        do{
-            $len += fwrite($this->fsp, substr($data, $len));
-        }
-        while($len < strlen($data));
-    }
-*/
 }
 
+/**
+ * Generic tag
+ */
 class ecTag
 {
     var $size;
@@ -172,11 +173,13 @@ class ecTag
     {
         $total_size = $this->size;
 
-        foreach($this->subtags as $tag){
-            $total_size += $tag->Size();
-            $total_size += (2 + 1 + 4); // name + type + size
-            if($tag->HasSubtags())
-                $total_size += 2;
+        if(count($this->subtags)){
+            foreach($this->subtags as $tag){
+                $total_size += $tag->Size();
+                $total_size += (2 + 1 + 4); // name + type + size
+                if($tag->HasSubtags())
+                    $total_size += 2;
+            }
         }
 
         return $total_size;
@@ -201,6 +204,11 @@ class ecTag
     }
 }
 
+/**
+ * Integer tag
+ *
+ * Works!
+ */
 class ecTagInt extends ecTag
 {
     var $val;
@@ -284,7 +292,12 @@ class ecTagInt extends ecTag
     }
 }
 
-class ecTagMD4 extends ecTag
+/**
+ * MD5 Hash tag
+ *
+ * Works!
+ */
+class ecTagMD5 extends ecTag
 {
     var $val;
 
@@ -312,13 +325,15 @@ class ecTagMD4 extends ecTag
         parent::Write($socket);
         $socket->Write(pack('N*', $this->val[1], $this->val[2], $this->val[3], $this->val[4]));
     }
-
-//     function ecMD4Hash()
-//     {
-//         return new CMD4Hash($this->val);
-//     }
 }
 
+/**
+ * IPv4 tag
+ *
+ * Only for parsing purpose
+ *
+ * Works!
+ */
 class ecTagIPv4 extends ecTag
 {
     var $address;
@@ -329,11 +344,22 @@ class ecTagIPv4 extends ecTag
         parent::__construct($name, EC_TAGTYPE_IPV4, $subtags);
 
         $this->size = 4 + 2;
-        list(, $this->address) = unpack('V', $socket->Read(4)); // Read 4 bytes (Int32)
-        list(, $this->port) = unpack('v', $socket->Read(2)); // Read 2 bytes (Int16)
+        list(, $this->address) = unpack('N', $socket->Read(4)); // Read 4 bytes (Int32)
+        list(, $this->port) = unpack('n', $socket->Read(2)); // Read 2 bytes (Int16)
+    }
+
+    function IP()
+    {
+        return (($this->address >> 24) & 0xff) . '.' .
+               (($this->address >> 16) & 0xff) . '.' .
+               (($this->address >> 8) & 0xff) . '.' .
+               (($this->address) & 0xff);
     }
 }
 
+/**
+ * Custom tag
+ */
 class ecTagCustom extends ecTag
 {
     var $val;
@@ -347,6 +373,11 @@ class ecTagCustom extends ecTag
     }
 }
 
+/**
+ * String tag
+ *
+ * Works!
+ */
 class ecTagString extends ecTag
 {
     var $val;
@@ -442,7 +473,7 @@ class ecPacket extends ecTag
                 $tag = new ecTagIPv4($tag_name, $socket, $subtags);
                 break;
             case EC_TAGTYPE_HASH16:
-                $tag = new ecTagMD4($tag_name, $socket, $subtags);
+                $tag = new ecTagMD5($tag_name, $socket, $subtags);
                 break;
 
             case EC_TAGTYPE_UNKNOWN:
@@ -511,6 +542,12 @@ class ecPacket extends ecTag
 }
 
 // Specific-purpose tags
+
+/**
+ * Login Packet
+ *
+ * Works!
+ */
 class ecLoginPacket extends ecPacket
 {
     function __construct($client_name, $version, $pass)
@@ -521,19 +558,15 @@ class ecLoginPacket extends ecPacket
         $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_NAME, $client_name));
         $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_VERSION, $version));
         $this->AddSubtag(new ecTagInt(EC_TAG_PROTOCOL_VERSION, EC_CURRENT_PROTOCOL_VERSION, 2)); // I think size is 2 bytes
-        $this->AddSubtag(new ecTagMD4(EC_TAG_PASSWD_HASH, $pass, array()));
+        $this->AddSubtag(new ecTagMD5(EC_TAG_PASSWD_HASH, $pass, array()));
     }
 }
 
-class ecDownloadsInfoReq extends ecPacket
-{
-    function __construct()
-    {
-        parent::__construct(EC_OP_GET_DLOAD_QUEUE);
-    }
-}
-
-// Only for parsing purpose
+/**
+ * \class ecConnStateTag
+ * 
+ * Only for parsing purpose
+ */
 class ecConnStateTag
 {
     var $tag;
@@ -580,4 +613,24 @@ class ecConnStateTag
     {
         return $this->tag->SubTag(EC_TAG_SERVER);
     }
+}
+
+/**
+ * Request download queue
+ *
+ * @param $socket Socket connection
+ *
+ * @return ecPacket Response packet
+ *
+ * TODO: Maybe better return an array?
+ */
+function ecDownloadsInfoReq($socket)
+{
+    $request = new ecPacket(EC_OP_GET_DLOAD_QUEUE);
+    $request->Write($socket);
+    $socket->SendPacket();
+
+    $response = new ecPacket();
+    $response->Read($socket);
+    return $response;
 }
