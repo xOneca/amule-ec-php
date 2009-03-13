@@ -59,15 +59,24 @@ function read_utf8($socket)
 /**
  * Socket management class
  *
- * Sending a packet in a whole write is neccessary to work
+ * Sending a packet in a whole write is neccessary to work.
  */
 class ecSocket
 {
-//     var $host = null;
-//     var $port = null;
+    /**
+     * Internal vars
+     */
     var $fsp = false;
     var $buffer = '';
 
+    /**
+     * ecSocket class constructor
+     *
+     * @param $host IP or hostname of the aMule host.
+     * @param $port The port to connect to.
+     *
+     * @return ecSocket object or false if can't connect.
+     */
     function __construct($host, $port)
     {
 //         $this->host = $host;
@@ -78,12 +87,22 @@ class ecSocket
         if($this->fsp === false) return false;
     }
 
+    /**
+     * ecSocket class destructor
+     */
     function __destruct()
     {
         if($this->fsp !== false)
             fclose($this->fsp);
     }
 
+    /**
+     * Read from socket
+     *
+     * @param $length Number of bytes to read.
+     *
+     * @return Raw data read from the socket.
+     */
     function Read($length)
     {
         if($this->fsp === false) return false;
@@ -95,13 +114,26 @@ class ecSocket
         return $ret;
     }
 
+    /**
+     * Write data to the buffer
+     *
+     * @param $data Raw data to write.
+     *
+     * @return False if there's no connection to the host. True otherwise.
+     */
     function Write($data)
     {
         if($this->fsp === false) return false;
 
         $this->buffer .= $data;
+        return true;
     }
 
+    /**
+     * Send buffer data to the host
+     *
+     * @return Length of sent data, or false if there's no connection to the host.
+     */
     function SendPacket()
     {
         if($this->fsp === false) return false;
@@ -113,19 +145,34 @@ class ecSocket
         while($len < strlen($this->buffer));
 
         $this->buffer = '';
+        return $len;
     }
 }
 
 /**
- * Generic tag
+ * Generic tag class
+ *
+ * All other tags (including transmitted packet) inherit from this tag.
  */
 class ecTag
 {
+    /**
+     * Internal vars
+     */
     var $size;
     var $type;
     var $name;
     var $subtags;
 
+    /**
+     * ecTag constructor
+     *
+     * @param $name Tag name.
+     * @param $type Tag type.
+     * @param $subtags Array of sub-tags.
+     *
+     * @return ecTag object.
+     */
     function __construct($name=EC_TAG_STRING, $type=EC_TAGTYPE_UNKNOWN, $subtags=array())
     {
         $this->name = $name;
@@ -133,42 +180,76 @@ class ecTag
         $this->subtags = $subtags;
     }
 
+    /**
+     * Get number of sub-tags
+     *
+     * @return Sub-tag count.
+     */
     function SubtagCount()
     {
         return count($this->subtags);
     }
 
+    /**
+     * Write Sub-tags to socket
+     *
+     * @param $socket ecSocket object where sub-tags will be written
+     *
+     * @return True on success, false otherwise.
+     */
     function WriteSubtags($socket)
     {
         $count = count($this->subtags);
+        $success = true;
         if($count)
         {
             $socket->Write(pack(TYPEOF_SUBTAG_COUNT, $count));
             foreach($this->subtags as $tag)
-                $tag->Write($socket);
+                if(!$tag->Write($socket)) $success = false;
         }
+        return $success;
     }
 
+    /**
+     * Name of the tag
+     *
+     * @return The name of the tag
+     */
     function Name()
     {
         return $this->name;
     }
 
+    /**
+     * Write tag to socket
+     *
+     * @param $socket ecSocket object where tag will be written to.
+     *
+     * @return True on success, false otherwise.
+     */
     function Write($socket)
     {
         $name = $this->name << 1;
         if(count($this->subtags))
             $name |= 1;
 
-        $socket->Write(pack(TYPEOF_TAGNAME, $name));
-        $socket->Write(pack(TYPEOF_TAGTYPE, $this->type));
-        $socket->Write(pack(TYPEOF_TAGSIZE, $this->Size()));
+        $success = true;
 
-        $this->WriteSubtags($socket);
+        if(!$socket->Write(pack(TYPEOF_TAGNAME, $name))) $success = false;
+        if(!$socket->Write(pack(TYPEOF_TAGTYPE, $this->type))) $success = false;
+        if(!$socket->Write(pack(TYPEOF_TAGSIZE, $this->Size()))) $success = false;
+
+        if(!$this->WriteSubtags($socket)) $success = false;
 
         // Here derived class will put actual data.
+        return $success;
     }
 
+    /**
+     * Size of the tag
+     *
+     * @return Size, in bytes, that this tag would take if written to a socket.
+     */
     function Size()
     {
         $total_size = $this->size;
@@ -185,17 +266,34 @@ class ecTag
         return $total_size;
     }
 
+    /**
+     * Add a sub-tag
+     *
+     * @param $tag Tag object to add as sub-tag.
+     */
     function AddSubtag($tag)
     {
         assert(count($this->subtags) < 0xffff);
         $this->subtags[] = $tag;
     }
 
+    /**
+     * Has sub-tags?
+     *
+     * @return True if this tag has sub-tags. False if not.
+     */
     function HasSubtags()
     {
         return (count($this->subtags) > 0);
     }
 
+    /**
+     * Find a sub-tag
+     *
+     * @param $name The name of the sub-tag
+     *
+     * @return The sub-tag object that has the same name
+     */
     function SubTag($name)
     {
         foreach($this->subtags as $tag){
@@ -211,6 +309,9 @@ class ecTag
  */
 class ecTagInt extends ecTag
 {
+    /**
+     * Internal vars
+     */
     var $val;
 
     function __construct($name, $value_or_size, $size_or_socket, $subtags=null)
@@ -564,7 +665,7 @@ class ecLoginPacket extends ecPacket
 
 /**
  * \class ecConnStateTag
- * 
+ *
  * Only for parsing purpose
  */
 class ecConnStateTag
