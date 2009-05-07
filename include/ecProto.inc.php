@@ -35,11 +35,11 @@ function utf8_chars_left($first_char)
 {
     if($first_char & 0x80 == 0x00){ // only one byte (ASCII char)
         return 0;
-    }if($first_char & 0xe0 == 0xc0){ // three first bits 110
+    }if($first_char & 0xe0 == 0xc0){ // two bytes (three first bits 110)
         return 1;
-    }elseif($first_char & 0xf0 == 0xe0){ // four first bits 1110
+    }elseif($first_char & 0xf0 == 0xe0){ // three bytes (four first bits 1110)
         return 2;
-    }elseif($first_char & 0xf8 == 0xf0){ // five first bits 11110
+    }elseif($first_char & 0xf8 == 0xf0){ // four bytes (five first bits 11110)
         return 3;
     }
     return false; // I don't know...
@@ -54,6 +54,9 @@ function read_utf8($socket)
     // If there are remaining bytes, read them too
     // Discard utf8 information from characters and
     // join them into one integer
+
+  $nc = 0;
+  $c0 = 
 }
 
 /**
@@ -316,7 +319,7 @@ class ecTagInt extends ecTag
 
     function __construct($name, $value_or_size, $size_or_socket, $subtags=null)
     {
-        if($subtags !== null)
+        if($subtags === null)
         {
             $size = $value_or_size;
             $socket = $size_or_socket;
@@ -359,7 +362,7 @@ class ecTagInt extends ecTag
         $this->size = $size;
     }
 
-    function ValueInt()
+    function Value()
     {
         assert(is_numeric($this->val));
         return $this->val;
@@ -402,17 +405,15 @@ class ecTagMD5 extends ecTag
 {
     var $val;
 
-    function __construct($name, $data_or_socket, $subtags=null)
+    function __construct($name, $data, $socket=null, $subtags=array())
     {
         parent::__construct($name, EC_TAGTYPE_HASH16, $subtags);
 
-        if($subtags !== null){
-            $data = $data_or_socket;
-            // Hash is a string of hexadecimal chars (?)
+        if($socket === null){
+            // Hash must be a string of hexadecimal chars
             $data = unpack('N4', pack('H*', $data)); // Read entire hash in 4 chunks
         }
         else{
-            $socket = $data_or_socket;
             $data = unpack('N4', $socket->Read(16)); // Read entire hash in 4 chunks
         }
         $this->val = $data; // Save it in 4 chunks (too big int)
@@ -425,6 +426,16 @@ class ecTagMD5 extends ecTag
 
         parent::Write($socket);
         $socket->Write(pack('N*', $this->val[1], $this->val[2], $this->val[3], $this->val[4]));
+    }
+    
+    function Value()
+    {
+        return sprintf('%x%x%x%x', $this->val[1], $this->val[2], $this->val[3], $this->val[4]);
+    }
+
+    function RawValue()
+    {
+        return pack('N*', $this->val[1], $this->val[2], $this->val[3], $this->val[4]);
     }
 }
 
@@ -472,6 +483,11 @@ class ecTagCustom extends ecTag
         $this->val = $socket->Read($size);
         $this->size = $size;
     }
+
+    function Value()
+    {
+        return $this->val;
+    }
 }
 
 /**
@@ -505,6 +521,11 @@ class ecTagString extends ecTag
         parent::Write($socket);
 
         $socket->Write($this->val . "\0");
+    }
+
+    function Value()
+    {
+        return $this->val;
     }
 }
 
@@ -544,16 +565,16 @@ class ecPacket extends ecTag
         $has_subtags = ($tag_name16 & 1) != 0;
         $tag_name = $tag_name16 >> 1;
 
-        list(, $tag_type8) = unpack('C', $socket->Read(1)); // Read 1 byte (Char)
-        list(, $tag_size32) = unpack('N', $socket->Read(4)); // Read 4 bytes (Int32)
+        list(, $tag_type) = unpack('C', $socket->Read(1)); // Read 1 byte (Char)
+        list(, $tag_size) = unpack('N', $socket->Read(4)); // Read 4 bytes (Int32)
 
         $subtags = array();
         if($has_subtags)
             $subtags = $this->ReadSubtags($socket);
 
-        switch($tag_type8){
+        switch($tag_type){
             case EC_TAGTYPE_CUSTOM:
-                $tag = new ecTagCustom($tag_name, $tag_size32, $socket, $subtags);
+                $tag = new ecTagCustom($tag_name, $tag_size, $socket, $subtags);
                 break;
             case EC_TAGTYPE_UINT8:
                 $tag = new ecTagInt($tag_name, 1, $socket, $subtags);
@@ -568,13 +589,13 @@ class ecPacket extends ecTag
                 $tag = new ecTagInt($tag_name, 8, $socket, $subtags);
                 break;
             case EC_TAGTYPE_STRING:
-                $tag = new ecTagString($tag_name, $tag_size32, $socket, $subtags);
+                $tag = new ecTagString($tag_name, $tag_size, $socket, $subtags);
                 break;
             case EC_TAGTYPE_IPV4:
                 $tag = new ecTagIPv4($tag_name, $socket, $subtags);
                 break;
             case EC_TAGTYPE_HASH16:
-                $tag = new ecTagMD5($tag_name, $socket, $subtags);
+                $tag = new ecTagMD5($tag_name, '', $socket, $subtags);
                 break;
 
             case EC_TAGTYPE_UNKNOWN:
@@ -658,15 +679,15 @@ class ecLoginPacket extends ecPacket
 
         $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_NAME, $client_name));
         $this->AddSubtag(new ecTagString(EC_TAG_CLIENT_VERSION, $version));
-        $this->AddSubtag(new ecTagInt(EC_TAG_PROTOCOL_VERSION, EC_CURRENT_PROTOCOL_VERSION, 2)); // I think size is 2 bytes
-        $this->AddSubtag(new ecTagMD5(EC_TAG_PASSWD_HASH, $pass, array()));
+        $this->AddSubtag(new ecTagInt(EC_TAG_PROTOCOL_VERSION, EC_CURRENT_PROTOCOL_VERSION, 2, array())); // I think size is 2 bytes
+        $this->AddSubtag(new ecTagMD5(EC_TAG_PASSWD_HASH, $pass));
     }
 }
 
 /**
- * \class ecConnStateTag
+ * Connection state tag
  *
- * Only for parsing purpose
+ * Only for parsing purpose.
  */
 class ecConnStateTag
 {
@@ -676,13 +697,13 @@ class ecConnStateTag
     function __construct($tag)
     {
         $this->tag = $tag;
-        $this->tag_val = $tag->ValueInt();
+        $this->tag_val = $tag->Value();
         // $this->tag_val = 0xfff;
     }
 
     function IsConnected()
     {
-        return IsConnectedED2K() || IsConnectedKademlia();
+        return $this->IsConnectedED2K() || $this->IsConnectedKademlia();
     }
 
     function IsConnectedED2K()
@@ -714,24 +735,4 @@ class ecConnStateTag
     {
         return $this->tag->SubTag(EC_TAG_SERVER);
     }
-}
-
-/**
- * Request download queue
- *
- * @param $socket Socket connection
- *
- * @return ecPacket Response packet
- *
- * TODO: Maybe better return an array?
- */
-function ecDownloadsInfoReq($socket)
-{
-    $request = new ecPacket(EC_OP_GET_DLOAD_QUEUE);
-    $request->Write($socket);
-    $socket->SendPacket();
-
-    $response = new ecPacket();
-    $response->Read($socket);
-    return $response;
 }
