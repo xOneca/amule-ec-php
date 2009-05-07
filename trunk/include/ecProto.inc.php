@@ -56,7 +56,7 @@ function read_utf8($socket)
     // join them into one integer
 
   $nc = 0;
-  $c0 = 
+  $c0 =
 }
 
 /**
@@ -427,7 +427,7 @@ class ecTagMD5 extends ecTag
         parent::Write($socket);
         $socket->Write(pack('N*', $this->val[1], $this->val[2], $this->val[3], $this->val[4]));
     }
-    
+
     function Value()
     {
         return sprintf('%x%x%x%x', $this->val[1], $this->val[2], $this->val[3], $this->val[4]);
@@ -734,5 +734,38 @@ class ecConnStateTag
     function Server()
     {
         return $this->tag->SubTag(EC_TAG_SERVER);
+    }
+}
+
+class ecPartFileTag
+{
+    var $tag;
+    var $name = '';
+    var $partmetid;
+    var $size_full = 0;
+    var $size_xfer = 0;
+    var $size_xfer_up = 0;
+    var $size_done = 0;
+    var $speed = 0;
+    var $status;
+    var $prio;
+    var $source_count = 0;
+    var $source_count_a4af = 0;
+    var $source_count_not_current = 0;
+    var $source_count_xfer = 0;
+    var $ed2k_link = '';
+    var $cat;
+    var $last_recv = 0;
+    var $last_seen_comp = 0;
+    var $part_status;
+    var $gap_status;
+    var $req_status;
+    var $source_names = array();
+    var $comments = array();
+
+    function __construct($tag)
+    {
+        $this->tag = $tag;
+
     }
 }
