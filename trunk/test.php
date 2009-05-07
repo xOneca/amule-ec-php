@@ -1,9 +1,26 @@
 <?php
 // Purpose: Testing EC Protocol
 
-require_once('include/ecProto.inc.php');
+//require_once('include/ecProto.inc.php');
+require_once('ecFunctions.php');
 
-// First, oepn a socket connection
+$ec = new ecProtocol('127.0.0.1', 4661); // host, port
+if($ec->Login('amule-php-remote', '1.0', '3CA7FA9B6781D94D763D07EBFAA5C515'))
+{
+    // Log in successful.
+    print "Log in successful.\n";
+//     var_dump($ec->DownloadsInfoReq());
+}
+else
+{
+    // Log in faliled.
+    print "Log in failed. Maybe wrong password?\n";
+    var_dump($ec->response);
+}
+
+/*
+//////  Old way:
+// First, open a socket connection
 $socket = new ecSocket('127.0.0.1', 4661);
 
 print "Preparing login packet...\n";
@@ -20,9 +37,11 @@ $response = new ecPacket();
 print "Receiving...\n";
 $response->Read($socket);
 print "Response received:\n";
-// var_dump($response);
-if($response->HasSubtags() && $response->SubTag(EC_TAG_SERVER_VERSION)->val)
-    print 'Server version: ' . $response->SubTag(EC_TAG_SERVER_VERSION)->val . "\n";
+var_dump($response);
+
+if($response->Opcode() == EC_OP_AUTH_OK)
+    print 'Server version: ' . $response->SubTag(EC_TAG_SERVER_VERSION)->Value() . "\n";
+exit();
 
 print "Checking server status...\n";
 $packet = new ecPacket(EC_OP_GET_CONNSTATE);
@@ -35,10 +54,12 @@ $response->Read($socket);
 $connstatetag = $response->SubTag(EC_TAG_CONNSTATE);
 print 'Server IP: ' . $connstatetag->SubTag(EC_TAG_SERVER)->IP() . "\n";
 print 'Server port: ' . $connstatetag->SubTag(EC_TAG_SERVER)->port . "\n";
-// print 'Server ping: ' . $connstatetag->SubTag(
+print 'Server ping: ' . $connstatetag->SubTag(EC_TAG_SERVER)->SubTag(EC_TAG_SERVER_PING)->val . "\n";
+
+print 'Ed2k ID: ' . $connstatetag->SubTag(EC_TAG_ED2K_ID)->val . "\n";
 var_dump($response);
 print "END\n";
-
+*/
 // Function to view a string as in an hex viewer
 function str_dump($str)
 {
