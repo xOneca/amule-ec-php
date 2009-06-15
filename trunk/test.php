@@ -1,15 +1,16 @@
 <?php
 // Purpose: Testing EC Protocol
+header('Content-Type: text/plain');
 
 //require_once('include/ecProto.inc.php');
 require_once('ecFunctions.php');
 
 $ec = new ecProtocol('127.0.0.1', 4661); // host, port
-if($ec->Login('amule-php-remote', '1.0', '3CA7FA9B6781D94D763D07EBFAA5C515'))
+if($ec->Login('amule-php-remote-test', '1.0', '3CA7FA9B6781D94D763D07EBFAA5C515'))
 {
     // Log in successful.
     print "Log in successful.\n";
-//     var_dump($ec->DownloadsInfoReq());
+//     var_dump($ec->DownloadsInfoReq()); // Throws error. It seems like doesn't receive a full packet.
 }
 else
 {
@@ -18,48 +19,6 @@ else
     var_dump($ec->response);
 }
 
-/*
-//////  Old way:
-// First, open a socket connection
-$socket = new ecSocket('127.0.0.1', 4661);
-
-print "Preparing login packet...\n";
-$packet = new ecLoginPacket('amule-php-remote', '1.0', '3CA7FA9B6781D94D763D07EBFAA5C515');
-print "Writting packet...\n";
-$packet->Write($socket);
-print "Going to send:\n";
-print str_dump($socket->buffer);
-print "Sending packet...\n";
-$socket->SendPacket();
-
-print "Preparing to receive...\n";
-$response = new ecPacket();
-print "Receiving...\n";
-$response->Read($socket);
-print "Response received:\n";
-var_dump($response);
-
-if($response->Opcode() == EC_OP_AUTH_OK)
-    print 'Server version: ' . $response->SubTag(EC_TAG_SERVER_VERSION)->Value() . "\n";
-exit();
-
-print "Checking server status...\n";
-$packet = new ecPacket(EC_OP_GET_CONNSTATE);
-$packet->Write($socket);
-$socket->SendPacket();
-
-print "Waiting response...\n";
-$response = new ecPacket();
-$response->Read($socket);
-$connstatetag = $response->SubTag(EC_TAG_CONNSTATE);
-print 'Server IP: ' . $connstatetag->SubTag(EC_TAG_SERVER)->IP() . "\n";
-print 'Server port: ' . $connstatetag->SubTag(EC_TAG_SERVER)->port . "\n";
-print 'Server ping: ' . $connstatetag->SubTag(EC_TAG_SERVER)->SubTag(EC_TAG_SERVER_PING)->val . "\n";
-
-print 'Ed2k ID: ' . $connstatetag->SubTag(EC_TAG_ED2K_ID)->val . "\n";
-var_dump($response);
-print "END\n";
-*/
 // Function to view a string as in an hex viewer
 function str_dump($str)
 {
