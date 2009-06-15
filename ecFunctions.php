@@ -101,6 +101,7 @@ class ecProtocol
 }
 
 
+// Taken from amule text client
 /**
  * @param $response ecPacket object
  */
@@ -201,7 +202,7 @@ function process_answer($response)
             break;
 
         case EC_OP_SEARCH_PROGRESS:
-            $tag = response->GetTagByName(EC_TAG_SEARCH_STATUS);
+            $tag = $response->GetTagByName(EC_TAG_SEARCH_STATUS);
             printf("Search progress: %u%%", $tag->Value());
             return $tag->Value();
             break;
