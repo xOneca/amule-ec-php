@@ -29,37 +29,6 @@ define('TYPEOF_TAGSIZE', 'N'); // 4
 define('TYPEOF_TAGTYPE', 'C'); // 1
 
 /**
- * How many 8-bit chars are left to complete the UTF-8 code
- */
-function utf8_chars_left($first_char)
-{
-    if($first_char & 0x80 == 0x00){ // only one byte (ASCII char)
-        return 0;
-    }if($first_char & 0xe0 == 0xc0){ // two bytes (three first bits 110)
-        return 1;
-    }elseif($first_char & 0xf0 == 0xe0){ // three bytes (four first bits 1110)
-        return 2;
-    }elseif($first_char & 0xf8 == 0xf0){ // four bytes (five first bits 11110)
-        return 3;
-    }
-    return false; // I don't know...
-}
-
-/**
- * Read UTF-8 number from socket
- */
-function read_utf8($socket)
-{
-    // Take first char and guess remaining bytes
-    // If there are remaining bytes, read them too
-    // Discard utf8 information from characters and
-    // join them into one integer
-
-  $nc = 0;
-  $c0 =
-}
-
-/**
  * Socket management class
  *
  * Sending a packet in a whole write is neccessary to work.
@@ -427,7 +396,7 @@ class ecTagMD5 extends ecTag
         parent::Write($socket);
         $socket->Write(pack('N*', $this->val[1], $this->val[2], $this->val[3], $this->val[4]));
     }
-
+    
     function Value()
     {
         return sprintf('%x%x%x%x', $this->val[1], $this->val[2], $this->val[3], $this->val[4]);
@@ -737,6 +706,7 @@ class ecConnStateTag
     }
 }
 
+// Not finished yet
 class ecPartFileTag
 {
     var $tag;
