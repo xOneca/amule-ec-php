@@ -21,12 +21,28 @@
 
 require_once('ecConstants.inc.php');
 
+// Debugging
+define('DEBUG', false);         // Enable ALL debug options
+// Or enable indibidually:
+
+//* (Remove a slash from this line to SWITCH OFF debugging)
+
+define('DEBUG_OP_DESC', true);  // OpCode names
+define('DEBUG_TAG_DESC', true); // TagType names
+
+/*/
+
+define('DEBUG_OP_DESC', false);
+define('DEBUG_TAG_DESC', false);
+
+//*/
+
 // int lengths in pack() format
 // maybe can be hardcoded
 define('TYPEOF_SUBTAG_COUNT', 'n'); // 2
-define('TYPEOF_TAGNAME', 'n'); // 2
-define('TYPEOF_TAGSIZE', 'N'); // 4
-define('TYPEOF_TAGTYPE', 'C'); // 1
+define('TYPEOF_TAGNAME', 'n');      // 2
+define('TYPEOF_TAGSIZE', 'N');      // 4
+define('TYPEOF_TAGTYPE', 'C');      // 1
 
 /**
  * Socket management class
@@ -80,8 +96,8 @@ class ecSocket
         if($this->fsp === false) return false;
 
         $ret = '';
-        while(strlen($ret) < $length)
-            $ret .= fread($this->fsp, $length - strlen($ret));
+        while(strlen($ret) < $length){str_dump($t = fread($this->fsp, $length - strlen($ret)));
+            $ret .= $t;}
 
         return $ret;
     }
@@ -133,7 +149,9 @@ class ecTag
      */
     var $size;
     var $type;
+    var $type_desc;
     var $name;
+    var $name_desc;
     var $subtags;
 
     /**
@@ -150,6 +168,16 @@ class ecTag
         $this->name = $name;
         $this->type = $type;
         $this->subtags = $subtags;
+
+        if(DEBUG || DEBUG_TAG_DESC)
+        {
+            $constants = get_defined_constants(true);
+            foreach($constants['user'] as $k => $v)
+                if(substr($k, 0, 7) == 'EC_TAG_' && $v == $name)
+                    $this->name_desc = $k;
+                elseif(substr($k, 0, 11) == 'EC_TAGTYPE_' && $v == $type)
+                    $this->type_desc = $k;
+        }
     }
 
     /**
@@ -502,12 +530,23 @@ define('MAX_UNCOMPRESSED_PACKET', 1024);
 class ecPacket extends ecTag
 {
     var $opcode;
+    var $opcode_desc;
     var $flags;
 
     function __construct($cmd=0)
     {
         $this->flags = 0x20;
         $this->opcode = $cmd;
+
+        if(DEBUG || DEBUG_OP_DESC)
+        {
+            $constants = get_defined_constants(true);
+            foreach($constants['user'] as $k => $v)
+                if(substr($k, 0, 6) == 'EC_OP_' && $v == $cmd){
+                    $this->opcode_desc = $k;
+                    break;
+                }
+        }
     }
 
     function Read($socket)
@@ -523,6 +562,16 @@ class ecPacket extends ecTag
         if($tag_count){
             for($i = 0; $i < $tag_count; $i++)
                 $this->AddSubtag($this->ReadTag($socket));
+        }
+
+        if(DEBUG || DEBUG_OP_DESC)
+        {
+            $constants = get_defined_constants(true);
+            foreach($constants['user'] as $k => $v)
+                if(substr($k, 0, 6) == 'EC_OP_' && $v == $this->opcode){
+                    $this->opcode_desc = $k;
+                    break;
+                }
         }
     }
 
@@ -546,16 +595,20 @@ class ecPacket extends ecTag
                 $tag = new ecTagCustom($tag_name, $tag_size, $socket, $subtags);
                 break;
             case EC_TAGTYPE_UINT8:
-                $tag = new ecTagInt($tag_name, 1, $socket, $subtags);
+                $tag = new ecTagInt($tag_name, 1, $socket, null);
+                $tag->subtags = $subtags;
                 break;
             case EC_TAGTYPE_UINT16:
-                $tag = new ecTagInt($tag_name, 2, $socket, $subtags);
+                $tag = new ecTagInt($tag_name, 2, $socket, null);
+                $tag->subtags = $subtags;
                 break;
             case EC_TAGTYPE_UINT32:
-                $tag = new ecTagInt($tag_name, 4, $socket, $subtags);
+                $tag = new ecTagInt($tag_name, 4, $socket, null);
+                $tag->subtags = $subtags;
                 break;
             case EC_TAGTYPE_UINT64:
-                $tag = new ecTagInt($tag_name, 8, $socket, $subtags);
+                $tag = new ecTagInt($tag_name, 8, $socket, null);
+                $tag->subtags = $subtags;
                 break;
             case EC_TAGTYPE_STRING:
                 $tag = new ecTagString($tag_name, $tag_size, $socket, $subtags);
