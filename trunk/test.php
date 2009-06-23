@@ -18,7 +18,7 @@ if($ec->Login('amule-php-remote-test'.rand(1000, 9999), '1.0', '3CA7FA9B6781D94D
         {
             $dl[] = $file = new ecPartFileTag($downloading_file);
             print($file->name . ":\n");
-            print(str_dump($file->dwn_sts->gap_status->enc_buff));
+            print(str_dump($file->dwn_sts->gap_status->decoded));
             var_dump($file->dwn_sts->gaps);
 //             print("File $k:\n".str_dump($downloading_file->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value())."\n");
         }
