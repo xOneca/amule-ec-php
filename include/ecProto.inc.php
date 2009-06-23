@@ -20,6 +20,7 @@
 /// Purpose: Classes for implementing aMule EC protocol
 
 require_once('ecConstants.inc.php');
+require_once('include/ecData.inc.php');
 
 // Debugging
 define('DEBUG', false);         // Enable ALL debug options
@@ -772,7 +773,7 @@ class ecPartFileTag
     var $partmetid = 0;
     var $size_full = 0;
     var $size_xfer = 0;
-//     var $size_xfer_up = 0;
+//     var $size_xfer_up;
     var $size_done = 0;
     var $speed = 0;
     var $status = 0;
@@ -783,12 +784,12 @@ class ecPartFileTag
     var $source_count_xfer = 0;
     var $ed2k_link = '';
     var $cat = 0;
-//     var $last_recv = 0;
+//     var $last_recv;
     var $last_seen_comp = 0;
     var $part_status;
     var $gap_status;
     var $req_status;
-//     var $source_names = array();
+//     var $source_names;
     var $comments = array();
 
     function __construct($tag)
@@ -813,5 +814,7 @@ class ecPartFileTag
         $this->gap_status               = $tag->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value();
         $this->req_status               = $tag->SubTag(EC_TAG_PARTFILE_REQ_STATUS)->Value();
         $this->comments                 = $tag->SubTag(EC_TAG_PARTFILE_COMMENTS)->Value(); // Int
+        $this->dwn_sts = new PartFileEncoderData();
+        $this->dwn_sts->Decode($this->gap_status, $this->part_status);
     }
 }
