@@ -424,7 +424,7 @@ class ecTagMD5 extends ecTag
         parent::Write($socket);
         $socket->Write(pack('N*', $this->val[1], $this->val[2], $this->val[3], $this->val[4]));
     }
-    
+
     function Value()
     {
         return sprintf('%x%x%x%x', $this->val[1], $this->val[2], $this->val[3], $this->val[4]);
@@ -463,6 +463,11 @@ class ecTagIPv4 extends ecTag
                (($this->address >> 16) & 0xff) . '.' .
                (($this->address >> 8) & 0xff) . '.' .
                (($this->address) & 0xff);
+    }
+
+    function Value()
+    {
+        return $this->IP() . ':' . $this->port;
     }
 }
 
@@ -666,8 +671,8 @@ class ecPacket extends ecTag
         if($packet_size > MAX_UNCOMPRESSED_PACKET)
             $this->flags |= EC_FLAG_ZLIB;
 
+// TODO: Implement ZLIB compression
         if(($this->flags & EC_FLAG_ZLIB) != 0){
-            // Not implemented
             $this->flags &= ~EC_FLAG_ZLIB;
 //             return false;
         }
@@ -764,31 +769,49 @@ class ecPartFileTag
 {
     var $tag;
     var $name = '';
-    var $partmetid;
+    var $partmetid = 0;
     var $size_full = 0;
     var $size_xfer = 0;
-    var $size_xfer_up = 0;
+//     var $size_xfer_up = 0;
     var $size_done = 0;
     var $speed = 0;
-    var $status;
-    var $prio;
+    var $status = 0;
+    var $prio = 0;
     var $source_count = 0;
     var $source_count_a4af = 0;
     var $source_count_not_current = 0;
     var $source_count_xfer = 0;
     var $ed2k_link = '';
-    var $cat;
-    var $last_recv = 0;
+    var $cat = 0;
+//     var $last_recv = 0;
     var $last_seen_comp = 0;
     var $part_status;
     var $gap_status;
     var $req_status;
-    var $source_names = array();
+//     var $source_names = array();
     var $comments = array();
 
     function __construct($tag)
     {
         $this->tag = $tag;
-
+        $this->name                     = $tag->SubTag(EC_TAG_PARTFILE_NAME)->Value();
+        $this->partmetid                = $tag->SubTag(EC_TAG_PARTFILE_PARTMETID)->Value();
+        $this->size_full                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_FULL)->Value();
+        $this->size_xfer                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_XFER)->Value();
+        $this->size_done                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_DONE)->Value();
+        $this->speed                    = $tag->SubTag(EC_TAG_PARTFILE_SPEED)->Value();
+        $this->status                   = $tag->SubTag(EC_TAG_PARTFILE_PART_STATUS)->Value();
+        $this->prio                     = $tag->SubTag(EC_TAG_PARTFILE_PRIO)->Value();
+        $this->source_count             = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT)->Value();
+        $this->source_count_a4af        = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_A4AF)->Value();
+        $this->source_count_not_current = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_NOT_CURRENT)->Value();
+        $this->source_count_xfer        = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_XFER)->Value();
+        $this->ed2k_link                = $tag->SubTag(EC_TAG_PARTFILE_ED2K_LINK)->Value();
+        $this->cat                      = $tag->SubTag(EC_TAG_PARTFILE_CAT)->Value();
+        $this->last_seen_comp           = $tag->SubTag(EC_TAG_PARTFILE_LAST_SEEN_COMP)->Value();
+        $this->part_status              = $tag->SubTag(EC_TAG_PARTFILE_PART_STATUS)->Value();
+        $this->gap_status               = $tag->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value();
+        $this->req_status               = $tag->SubTag(EC_TAG_PARTFILE_REQ_STATUS)->Value();
+        $this->comments                 = $tag->SubTag(EC_TAG_PARTFILE_COMMENTS)->Value(); // Int
     }
 }

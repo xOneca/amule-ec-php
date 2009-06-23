@@ -1,56 +1,70 @@
 <?php
+
+//
+// RLE implementation. I need only decoder part
+//
 class RLE_Data
-{}
+{
+    var $use_diff = false;
+    var $len = 0;
+    var $enc_buff = '';
+    var $buff = '';
 
-class PartFileEncoderData
-{}
+    function __construct($len, $use_diff = false)
+    {
+        $this->len = intval($len);
+        $this->use_diff = ($use_diff) ? true : false;
+    }
 
-/* C# Code:
-    ///
-    /// RLE implementation. I need only decoder part
-    ///
-    public class RLE_Data {
-        bool m_use_diff;
-        int m_len;
-        byte[] m_enc_buff;
-        byte[] m_buff;
-
-        public RLE_Data(int len, bool use_diff)
+    function Decode($buff, $start_offset = 0)
+    {
+        $len = strlen($buff);
+        $i = $start_offset;
+        $j = 0;
+        while($j != $this->len)
         {
-            m_len = len;
-            m_use_diff = use_diff;
-            // in worst case 2-byte sequence encoded as 3. So, data can grow at 1/3
-            m_enc_buff = new byte[m_len*4/3 + 1];
-            m_buff = new byte[m_len];
-        }
-
-        public byte[] Buffer
-        {
-            get { return m_buff; }
-        }
-
-        public int Length
-        {
-            get { return m_len; }
-        }
-
-        public void Realloc(int size)
-        {
-            if ( size == m_len ) {
-                return;
+            if($i < $len - 1)
+            {
+                if($buff{$i + 1} == $buff[$i])
+                {
+                    // This is sequence
+                    for($k = 0; $k < ord($buff[$i + 2]); $k++)
+                        $this->enc_buff .= $buff[$i];
+                    $j += ord($buff[$i + 2]);
+                    $i += 3;
+                }
+                else
+                {
+                    $this->enc_buff .= $buff[$i];
+                    $i++;
+                    $j++;
+                }
             }
-
-            if ( (size > m_len) && (size > m_buff.Length) ) {
-                m_buff = new byte[size];
-                m_enc_buff = new byte[size * 4 / 3 + 1];
+            else
+            {
+                // only 1 byte left in encoded data - it can't be sequence
+                $this->enc_buff .= $buff[$i];
+                $j++;
+                $i++;
+                // if there's no more data, but buffer end is not reached,
+                // it must be error in some point
+                if($j != $this->len)
+                    return false;
             }
-            m_len = size;
         }
 
+        if($this->use_diff)
+        {
+            for($k = 0; $k < $this->len; $k++)
+                $this->buff[$k] ^= $this->enc_buff[$k];
+        }
+    }
+}
+
+/*
         public void Decode(byte [] buff, int start_offset)
         {
             int len = buff.Length;
-
             int i = start_offset, j = 0;
             while ( j != m_len ) {
                 if ( i < (len -1) ) {
@@ -84,8 +98,59 @@ class PartFileEncoderData
                 }
             }
         }
+
+        public RLE_Data(int len, bool use_diff)
+        {
+            m_len = len;
+            m_use_diff = use_diff;
+            // in worst case 2-byte sequence encoded as 3. So, data can grow at 1/3
+            m_enc_buff = new byte[m_len*4/3 + 1];
+            m_buff = new byte[m_len];
+        }
+
+        public byte[] Buffer
+        {
+            get { return m_buff; }
+        }
+
+        public int Length
+        {
+            get { return m_len; }
+        }
+
+        public void Realloc(int size)
+        {
+            if ( size == m_len ) {
+                return;
+            }
+
+            if ( (size > m_len) && (size > m_buff.Length) ) {
+                m_buff = new byte[size];
+                m_enc_buff = new byte[size * 4 / 3 + 1];
+            }
+            m_len = size;
+        }
+    }
+*/
+
+class PartFileEncoderData
+{
+    var $part_status;
+    var $gap_status;
+
+    function __construct($partcount, $gapcount)
+    {
+        $this->part_status = new RLE_Data($partcount + 1, true);
+        $this->gap_status = new RLE_Data($gapcount * 8 + 1, true); // gapcount*sizeof(Int64)+1
     }
 
+    function Decode($gapdata, $partdata)
+    {
+        $this->part_status->Decode($partdata);
+        $this->gap_status->Decode($gapdata, 4);
+    }
+}
+/*
     public class PartFileEncoderData {
         public RLE_Data m_part_status;
         public RLE_Data m_gap_status;

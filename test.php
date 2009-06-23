@@ -12,7 +12,11 @@ if($ec->Login('amule-php-remote-test'.rand(1000, 9999), '1.0', '3CA7FA9B6781D94D
     // Log in successful.
     print("Log in successful.\n");
     $downloads = $ec->DownloadsInfoReq();
-    print("\n".str_dump($downloads->subtags[0]->subtags[17]->Value()));
+    if(count($downloads->subtags))
+    {
+        foreach($downloads->subtags as $k => $downloading_file)
+            print("File $k:\n".str_dump($downloading_file->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value())."\n");
+    }
     print("\n\$downloads object:\n");
     var_dump($downloads);
 }
