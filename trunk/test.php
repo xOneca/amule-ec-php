@@ -15,7 +15,12 @@ if($ec->Login('amule-php-remote-test'.rand(1000, 9999), '1.0', '3CA7FA9B6781D94D
     if(count($downloads->subtags))
     {
         foreach($downloads->subtags as $k => $downloading_file)
-            print("File $k:\n".str_dump($downloading_file->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value())."\n");
+        {
+            $dl[] = $file = new ecPartFileTag($downloading_file);
+            print($file->name . ":\n");
+            print(str_dump($file->dwn_sts->gap_status->enc_buff));
+//             print("File $k:\n".str_dump($downloading_file->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value())."\n");
+        }
     }
     print("\n\$downloads object:\n");
     var_dump($downloads);
@@ -38,7 +43,7 @@ function str_dump($str)
         $print[$n] = '';
         for($i = 0; $i < strlen($line); $i++)
         {
-            $print[$n] .= bin2hex($line{$i}) . ' ';
+            $print[$n] .= bin2hex($line[$i]) . ' ';
             if(($i+1) % 8 == 0 && $i != 0)
                 $print[$n] .= ' '; // extra space
         }
@@ -47,8 +52,8 @@ function str_dump($str)
 
         for($i = 0; $i < strlen($line); $i++)
         {
-            if(ord($line{$i}) > 0x1f && ord($line{$i}) < 0x7f)
-                $print[$n] .= $line{$i};
+            if(ord($line[$i]) > 0x1f && ord($line[$i]) < 0x7f)
+                $print[$n] .= $line[$i];
             else
                 $print[$n] .= '.'; // non-printable char
             if(($i+1) % 8 == 0 && $i != 0)
