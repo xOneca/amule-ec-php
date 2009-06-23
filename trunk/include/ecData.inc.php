@@ -19,42 +19,33 @@
 
 /// Purpose: Run Length Encoding (RLE) implementation
 
+//define('PARTSIZE', 9728000);
+
 // RLE implementation. We need only decoder part
 class RLE_Data
 {
-    var $use_diff = false;
-    var $enc_buff = '';
-    var $buff = '';
+    var $decoded = '';
 
-    function __construct($use_diff = false)
+    function Decode($rle_encoded, $start_offset = 0)
     {
-        $this->use_diff = ($use_diff) ? true : false;
-    }
-
-    function Decode($buff, $start_offset = 0)
-    {
-        $len = strlen($buff);
+        $len = strlen($rle_encoded);
         $i = $start_offset;
         while($i < $len)
         {
-            if($buff[$i + 1] == $buff[$i])
+            if($rle_encoded[$i + 1] == $rle_encoded[$i])
             {
                 // This is sequence
-                $this->enc_buff .= str_repeat($buff[$i], ord($buff[$i + 2]));
+                $this->decoded .= str_repeat($rle_encoded[$i], ord($rle_encoded[$i + 2]));
                 $i += 3;
             }
             else
             {
-                $this->enc_buff .= $buff[$i];
+                $this->decoded .= $rle_encoded[$i];
                 $i++;
             }
         }
 
-        if($this->use_diff)
-        {
-            for($k = 0; $k < $this->len; $k++)
-                $this->buff[$k] ^= $this->enc_buff[$k];
-        }
+        return $this->decoded;
     }
 }
 
@@ -65,13 +56,20 @@ class PartFileEncoderData
 
     function __construct()
     {
-        $this->part_status = new RLE_Data(true);
-        $this->gap_status = new RLE_Data(true);
+        $this->part_status = new RLE_Data();
+        $this->gap_status = new RLE_Data();
     }
 
     function Decode($gapdata, $partdata)
     {
         $this->part_status->Decode($partdata);
-        $this->gap_status->Decode($gapdata, 4);
+        $decoded_gaps = $this->gap_status->Decode($gapdata, 4);
+        list(, $num_gaps) = unpack('N', $gapdata);
+        for($i = 0; $i < $num_gaps; $i++)
+        {
+            $gaps = unpack('N2start/N2end', substr($gapdata, $i * 8 + 4));
+            $this->gaps[$i]['start'] = $gaps['start1'] << 32 | $gaps['start2'];
+            $this->gaps[$i]['end'] = $gaps['end1'] << 32 | $gaps['end2'];
+        }
     }
 }
