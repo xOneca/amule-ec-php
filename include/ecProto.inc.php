@@ -20,7 +20,7 @@
 /// Purpose: Classes for implementing aMule EC protocol
 
 require_once('ecConstants.inc.php');
-require_once('include/ecData.inc.php');
+require_once('include/ecRLE.inc.php');
 
 // Debugging
 define('DEBUG', false);         // Enable ALL debug options
@@ -414,7 +414,7 @@ class ecTagMD5 extends ecTag
         else{
             $data = unpack('N4', $socket->Read(16)); // Read entire hash in 4 chunks
         }
-        $this->val = $data; // Save it in 4 chunks (too big int)
+        $this->val = $data; // Save it in 4 chunks (too big int otherwise)
         $this->size = 16;
     }
 
@@ -544,8 +544,13 @@ class ecPacket extends ecTag
         $this->flags = 0x20;
         $this->opcode = $cmd;
 
+        // Vars inherited by ecTag that aren't used here.
+        unset($this->type, $this->name);
+
         if(DEBUG || DEBUG_OP_DESC)
         {
+            unset($this->type_desc, $this->name_desc);
+
             $constants = get_defined_constants(true);
             foreach($constants['user'] as $k => $v)
                 if(substr($k, 0, 6) == 'EC_OP_' && $v == $cmd){
@@ -768,7 +773,7 @@ class ecConnStateTag
 // Not finished yet
 class ecPartFileTag
 {
-    var $tag;
+//     var $tag;
     var $name = '';
     var $partmetid = 0;
     var $size_full = 0;
@@ -790,31 +795,84 @@ class ecPartFileTag
     var $gap_status;
     var $req_status;
 //     var $source_names;
-    var $comments = array();
+    var $comments = 0;
 
     function __construct($tag)
     {
-        $this->tag = $tag;
-        $this->name                     = $tag->SubTag(EC_TAG_PARTFILE_NAME)->Value();
-        $this->partmetid                = $tag->SubTag(EC_TAG_PARTFILE_PARTMETID)->Value();
-        $this->size_full                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_FULL)->Value();
-        $this->size_xfer                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_XFER)->Value();
-        $this->size_done                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_DONE)->Value();
+//         $this->tag = $tag;
+        $this->hash                     = $tag->Value(); // string (MD5 hash)
+        $this->name                     = $tag->SubTag(EC_TAG_PARTFILE_NAME)->Value(); // string
+        $this->partmetid                = $tag->SubTag(EC_TAG_PARTFILE_PARTMETID)->Value(); // integer
+        $this->size_full                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_FULL)->Value(); // integer
+        $this->size_xfer                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_XFER)->Value(); // integer
+        $this->size_done                = $tag->SubTag(EC_TAG_PARTFILE_SIZE_DONE)->Value(); // integer
         $this->speed                    = $tag->SubTag(EC_TAG_PARTFILE_SPEED)->Value();
-        $this->status                   = $tag->SubTag(EC_TAG_PARTFILE_PART_STATUS)->Value();
-        $this->prio                     = $tag->SubTag(EC_TAG_PARTFILE_PRIO)->Value();
-        $this->source_count             = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT)->Value();
-        $this->source_count_a4af        = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_A4AF)->Value();
-        $this->source_count_not_current = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_NOT_CURRENT)->Value();
-        $this->source_count_xfer        = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_XFER)->Value();
-        $this->ed2k_link                = $tag->SubTag(EC_TAG_PARTFILE_ED2K_LINK)->Value();
-        $this->cat                      = $tag->SubTag(EC_TAG_PARTFILE_CAT)->Value();
-        $this->last_seen_comp           = $tag->SubTag(EC_TAG_PARTFILE_LAST_SEEN_COMP)->Value();
-        $this->part_status              = $tag->SubTag(EC_TAG_PARTFILE_PART_STATUS)->Value();
-        $this->gap_status               = $tag->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value();
-        $this->req_status               = $tag->SubTag(EC_TAG_PARTFILE_REQ_STATUS)->Value();
-        $this->comments                 = $tag->SubTag(EC_TAG_PARTFILE_COMMENTS)->Value(); // Int
-        $this->dwn_sts = new PartFileEncoderData();
-        $this->dwn_sts->Decode($this->gap_status, $this->part_status);
+
+        /**
+         * status
+         *   0 = Waiting
+         *   1 = Downloading
+         *   7 = Paused
+         */
+        $this->status                   = $tag->SubTag(EC_TAG_PARTFILE_STATUS)->Value(); // integer
+        $this->prio                     = $tag->SubTag(EC_TAG_PARTFILE_PRIO)->Value(); // integer (bitset)
+        $this->source_count             = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT)->Value(); // integer
+        $this->source_count_a4af        = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_A4AF)->Value(); // integer
+        $this->source_count_not_current = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_NOT_CURRENT)->Value(); // integer
+        $this->source_count_xfer        = $tag->SubTag(EC_TAG_PARTFILE_SOURCE_COUNT_XFER)->Value(); // integer
+        $this->ed2k_link                = $tag->SubTag(EC_TAG_PARTFILE_ED2K_LINK)->Value(); // string
+        $this->cat                      = $tag->SubTag(EC_TAG_PARTFILE_CAT)->Value(); // integer
+        $this->last_seen_comp           = $tag->SubTag(EC_TAG_PARTFILE_LAST_SEEN_COMP)->Value(); // integer (unix timestamp)
+
+        $this->part_status   = RLE_Decode($tag->SubTag(EC_TAG_PARTFILE_PART_STATUS)->Value());  // string
+        $this->gap_status    = RLE_Decode($tag->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value(), 4); // string
+
+        $gap_count          = unpack('N', $tag->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value());
+        $this->gap_count    = $gap_count[1];                                                  // integer
+
+        $this->req_status    = RLE_Decode($tag->SubTag(EC_TAG_PARTFILE_REQ_STATUS)->Value()); // string
+        $this->req_count     = strlen($this->req_status) / 16;
+
+// // Get source names
+//     CECTag *srcnametag = tag->GetTagByName(EC_TAG_PARTFILE_SOURCE_NAMES);
+//     if (srcnametag) {
+//         file->ClearSourcenameItemList();
+//         int max = srcnametag->GetTagCount();
+//         for (int i = 0; i < max - 1; ) {
+//             wxString name = srcnametag->GetTagByIndex(i++)->GetStringData();
+//             long count = srcnametag->GetTagByIndex(i++)->GetInt();
+//             file->AddSourcenameItemList(name, count);
+//         }
+//     }
+
+//     // Get comments
+//     CECTag *commenttag = tag->GetTagByName(EC_TAG_PARTFILE_COMMENTS);
+//     if (commenttag) {
+//         file->ClearFileRatingList();
+//         int max = commenttag->GetTagCount();
+//         for (int i = 0; i < max - 3; ) {
+//             wxString u = commenttag->GetTagByIndex(i++)->GetStringData();
+//             wxString f = commenttag->GetTagByIndex(i++)->GetStringData();
+//             int r = commenttag->GetTagByIndex(i++)->GetInt();
+//             wxString c = commenttag->GetTagByIndex(i++)->GetStringData();
+//             file->AddFileRatingList(u, f, r, c);
+//         }
+//         file->UpdateFileRatingCommentAvail();
+//     }
+        $this->comments = array();
+        $comments_tag = $tag->GetTagByName(EC_TAG_PARTFILE_COMMENTS);
+        $commentstag_count = $comments_tag->SubtagCount();
+        if($comments_count)
+        {
+            for($i = 0; $i < $commentstag_count - 3;)
+            {
+                $this->comments[] = array(
+                    'user'    => $comments_tag->subtags[$i++]->Value(),
+                    'file'    => $comments_tag->subtags[$i++]->Value(),
+                    'rating'  => $comments_tag->subtags[$i++]->Value(),
+                    'comment' => $comments_tag->subtags[$i++]->Value()
+                );
+            }
+        }
     }
 }
