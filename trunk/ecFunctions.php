@@ -17,7 +17,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/// Purpose: Funtions for interacting with aMule
+/// Purpose: Functions for interacting with aMule
 
 require_once('include/ecProto.inc.php');
 
@@ -54,7 +54,7 @@ class ecProtocol
      *
      * @return True on success. False otherwise.
      *
-     * NOTE: This function sets {@link #server_version} attribute on success.
+     * NOTE: This function sets server_version attribute on success.
      * WARNING: If you supply wrong password the connection will be closed
      *  suddenly by the server.
      */
@@ -94,7 +94,18 @@ class ecProtocol
 
         $this->response = new ecPacket();
         $this->response->Read($this->socket);
-        return $this->response;
+
+        if($this->response->Opcode() != EC_OP_DLOAD_QUEUE)
+            return false;
+var_dump($this->response);
+        if(!$this->response->HasSubtags())
+            return array();
+
+        foreach($this->response->subtags as $download)
+        {
+            $downloads[] = new ecPartFileTag($download);
+        }
+        return $downloads;
     }
 
 //     function ...

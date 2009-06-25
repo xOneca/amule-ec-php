@@ -7,24 +7,25 @@ header('Content-Type: text/plain');
 require_once('ecFunctions.php');
 
 $ec = new ecProtocol('127.0.0.1', 4661); // host, port
-if($ec->Login('amule-php-remote-test'.rand(1000, 9999), '1.0', '3CA7FA9B6781D94D763D07EBFAA5C515'))
+if($ec->Login('amule-php-remote-test '.rand(1000, 9999), '1.0', '3CA7FA9B6781D94D763D07EBFAA5C515'))
 {
     // Log in successful.
     print("Log in successful.\n");
     $downloads = $ec->DownloadsInfoReq();
-    if(count($downloads->subtags))
+    if(count($downloads))
     {
-        foreach($downloads->subtags as $k => $downloading_file)
+        foreach($downloads as $download)
         {
-            $dl[] = $file = new ecPartFileTag($downloading_file);
-            print($file->name . ":\n");
-            print(str_dump($file->dwn_sts->gap_status->decoded));
-            var_dump($file->dwn_sts->gaps);
-//             print("File $k:\n".str_dump($downloading_file->SubTag(EC_TAG_PARTFILE_GAP_STATUS)->Value())."\n");
+            print("\n" . $download->name . ":\n");
+            print('* Gaps: (' . $download->gap_count . ")\n");
+            print(str_dump($download->gap_status));
+            print("* Parts:\n". str_dump($download->part_status));
+            print('* Status: '. $download->status . "\n");
+            print("* Reqs:\n" . str_dump($download->req_status));
         }
     }
-    print("\n\$downloads object:\n");
-    var_dump($downloads);
+//     print("\n\$downloads object:\n");
+//     var_dump($downloads);
 }
 else
 {
