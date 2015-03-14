@@ -7,7 +7,7 @@ Maybe some day I'll release the 1.0 version... who knows :)
 
 # External Connection
 
-[External Connections](http://www.amule.org/wiki/index.php/External_Connections) (EC) is a bi-directional interface aMule uses to communicate with external utilities.
+[External Connections](http://wiki.amule.org/wiki/External_Connections) (EC) is a bi-directional interface aMule uses to communicate with external utilities.
 
 ## Details
 
